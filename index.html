@@ -263,12 +263,19 @@
     /* ============================================
        BOTÓN INTERACTIVO
        ============================================ */
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      margin-top: 2rem;
+    }
+
     .action-btn {
-      margin-top: 2.5rem;
-      padding: 0.9rem 2.2rem;
+      padding: 0.8rem 2rem;
       font-family: 'Inter', sans-serif;
       font-weight: 300;
-      font-size: clamp(0.75rem, 2vw, 0.85rem);
+      font-size: clamp(0.7rem, 1.8vw, 0.8rem);
       color: rgba(232, 228, 223, 0.6);
       background: transparent;
       border: 1px solid rgba(232, 228, 223, 0.15);
@@ -276,6 +283,7 @@
       cursor: pointer;
       letter-spacing: 0.08em;
       transition: all 0.5s ease;
+      min-width: 280px;
     }
 
     .action-btn:hover {
@@ -489,10 +497,12 @@
     <!-- Corazón con latido -->
     <div class="heartbeat" aria-hidden="true">&#10084;</div>
 
-    <!-- Botón interactivo -->
-    <button class="action-btn" id="open-overlay">
-      Cuando la distancia pese, pulsa aquí
-    </button>
+    <!-- Botones interactivos -->
+    <div class="action-buttons">
+      <button class="action-btn" data-overlay="miss">Ábrela cuando me eches de menos</button>
+      <button class="action-btn" data-overlay="bad-day">Ábrela cuando tengas un mal día</button>
+      <button class="action-btn" data-overlay="doubt">Ábrela cuando dudes</button>
+    </div>
   </div>
 
   <!-- ============================================
@@ -500,12 +510,7 @@
        ============================================ -->
   <div class="overlay-backdrop" id="overlay">
     <div class="overlay-content">
-      <p class="overlay-text">
-        No estoy contigo por costumbre.<br><br>
-        No estoy contigo por casualidad.<br><br>
-        Estoy contigo porque te elijo.<br><br>
-        Y volvería a elegirte incluso a 3.114 kilómetros.
-      </p>
+      <p class="overlay-text" id="overlay-text"></p>
       <button class="overlay-close" id="close-overlay">Cerrar</button>
     </div>
   </div>
@@ -682,26 +687,35 @@
        OVERLAY
        ============================================ */
     (function overlay() {
-      var openBtn = document.getElementById('open-overlay');
+      var buttons = document.querySelectorAll('.action-btn[data-overlay]');
       var closeBtn = document.getElementById('close-overlay');
       var backdrop = document.getElementById('overlay');
+      var overlayText = document.getElementById('overlay-text');
 
-      openBtn.addEventListener('click', function() {
-        backdrop.classList.add('active');
+      var messages = {
+        'miss': 'Cierra los ojos.<br><br>Respira.<br><br>Ese latido que sientes… el mío suena igual.<br><br>No estás sola. Nunca lo estás.<br><br>Porque cada vez que me echas de menos, yo ya estoy pensando en ti.',
+        'bad-day': 'Oye.<br><br>No tienes que ser fuerte todo el tiempo.<br><br>Hoy fue un mal día, no una mala vida.<br><br>Y aunque no pueda abrazarte ahora mismo, quiero que sepas que eres lo más bonito que me ha pasado.<br><br>Mañana saldrá el sol. Y si no sale, yo seré tu sol.',
+        'doubt': 'No dudes.<br><br>No dudes de lo que siento, porque ni la distancia, ni el tiempo, ni los 3.114 kilómetros han podido con esto.<br><br>Te elegí. Te elijo. Y te voy a seguir eligiendo.<br><br>Cada día. Sin excepción.'
+      };
+
+      buttons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var key = btn.getAttribute('data-overlay');
+          overlayText.innerHTML = messages[key];
+          backdrop.classList.add('active');
+        });
       });
 
       closeBtn.addEventListener('click', function() {
         backdrop.classList.remove('active');
       });
 
-      // Cerrar al hacer click fuera del contenido
       backdrop.addEventListener('click', function(e) {
         if (e.target === backdrop) {
           backdrop.classList.remove('active');
         }
       });
 
-      // Cerrar con Escape
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && backdrop.classList.contains('active')) {
           backdrop.classList.remove('active');
