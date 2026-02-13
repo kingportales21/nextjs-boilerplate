@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3.114 km</title>
+  <meta name="description" content="Cada segundo que pasa es uno menos sin ti.">
+
+  <!-- Google Fonts: Cormorant Garamond (nórdica, elegante) + Inter (minimalista) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@200;300;400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0c;
+      color: #e8e4df;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ============================================
+       CANVAS DE PARTÍCULAS (fondo estrellado)
+       ============================================ */
+    #particles-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ============================================
+       AURORA BOREAL (gradiente animado sutil)
+       ============================================ */
+    .aurora {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.15;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(72, 160, 220, 0.4) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 30%, rgba(100, 200, 180, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(130, 100, 200, 0.2) 0%, transparent 50%);
+      animation: auroraShift 20s ease-in-out infinite alternate;
+      transition: opacity 3s ease;
+    }
+
+    /* Cuando faltan < 24h: tonos cálidos (fuego / España) */
+    .aurora.warm {
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(220, 120, 60, 0.4) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 30%, rgba(200, 80, 80, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(180, 100, 50, 0.2) 0%, transparent 50%);
+      opacity: 0.25;
+    }
+
+    @keyframes auroraShift {
+      0%   { transform: scale(1) translate(0, 0); }
+      33%  { transform: scale(1.1) translate(-2%, 1%); }
+      66%  { transform: scale(0.95) translate(2%, -1%); }
+      100% { transform: scale(1.05) translate(-1%, 2%); }
+    }
+
+    /* ============================================
+       PANTALLA INTRO
+       ============================================ */
+    #intro-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a0c;
+      transition: opacity 1.5s ease, visibility 1.5s ease;
+    }
+
+    #intro-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .intro-line {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(1.2rem, 4vw, 2rem);
+      text-align: center;
+      line-height: 1.6;
+      padding: 0 2rem;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 2s ease, transform 2s ease;
+      letter-spacing: 0.02em;
+    }
+
+    .intro-line.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .intro-line.fade-out {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    /* ============================================
+       PANTALLA PRINCIPAL
+       ============================================ */
+    #main-screen {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    #main-screen.visible {
+      opacity: 1;
+    }
+
+    /* ============================================
+       CUENTA ATRÁS
+       ============================================ */
+    .countdown-container {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .countdown-label {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+      color: rgba(232, 228, 223, 0.5);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    .countdown-units {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(1rem, 4vw, 3rem);
+    }
+
+    .countdown-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .countdown-value {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(2.5rem, 10vw, 5.5rem);
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: #e8e4df;
+      min-width: 2ch;
+    }
+
+    .countdown-unit-label {
+      font-family: 'Inter', sans-serif;
+      font-weight: 200;
+      font-size: clamp(0.55rem, 1.8vw, 0.75rem);
+      color: rgba(232, 228, 223, 0.4);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 0.5rem;
+    }
+
+    .countdown-separator {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(1.5rem, 6vw, 3rem);
+      color: rgba(232, 228, 223, 0.2);
+      align-self: flex-start;
+      margin-top: 0.3rem;
+    }
+
+    /* ============================================
+       MENSAJES BAJO EL CONTADOR
+       ============================================ */
+    .sub-message {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(0.9rem, 2.5vw, 1.15rem);
+      color: rgba(232, 228, 223, 0.55);
+      text-align: center;
+      margin-top: 0.5rem;
+      letter-spacing: 0.01em;
+    }
+
+    /* Mensaje de < 7 días */
+    .week-message {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      color: rgba(232, 228, 223, 0.7);
+      text-align: center;
+      margin-top: 1.5rem;
+      opacity: 0;
+      transition: opacity 2s ease;
+      max-width: 500px;
+    }
+
+    .week-message.visible {
+      opacity: 1;
+    }
+
+    /* ============================================
+       CORAZÓN CON LATIDO
+       ============================================ */
+    .heartbeat {
+      margin-top: 2rem;
+      font-size: 1rem;
+      opacity: 0.35;
+      animation: heartPulse 2s ease-in-out infinite;
+      user-select: none;
+    }
+
+    @keyframes heartPulse {
+      0%, 100% { transform: scale(1); opacity: 0.35; }
+      15%      { transform: scale(1.15); opacity: 0.6; }
+      30%      { transform: scale(1); opacity: 0.35; }
+      45%      { transform: scale(1.1); opacity: 0.5; }
+      60%      { transform: scale(1); opacity: 0.35; }
+    }
+
+    /* ============================================
+       BOTÓN INTERACTIVO
+       ============================================ */
+    .action-btn {
+      margin-top: 2.5rem;
+      padding: 0.9rem 2.2rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: clamp(0.75rem, 2vw, 0.85rem);
+      color: rgba(232, 228, 223, 0.6);
+      background: transparent;
+      border: 1px solid rgba(232, 228, 223, 0.15);
+      border-radius: 50px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.5s ease;
+    }
+
+    .action-btn:hover {
+      color: rgba(232, 228, 223, 0.9);
+      border-color: rgba(232, 228, 223, 0.35);
+      box-shadow: 0 0 30px rgba(232, 228, 223, 0.05);
+    }
+
+    .action-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* ============================================
+       OVERLAY
+       ============================================ */
+    .overlay-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 200;
+      background: rgba(8, 8, 10, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+
+    .overlay-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .overlay-content {
+      max-width: 520px;
+      width: 90%;
+      padding: 3rem 2rem;
+      text-align: center;
+      transform: scale(0.95) translateY(10px);
+      transition: transform 0.8s ease;
+    }
+
+    .overlay-backdrop.active .overlay-content {
+      transform: scale(1) translateY(0);
+    }
+
+    .overlay-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(1.1rem, 3.5vw, 1.5rem);
+      line-height: 2.2;
+      color: rgba(232, 228, 223, 0.9);
+      letter-spacing: 0.01em;
+    }
+
+    .overlay-close {
+      margin-top: 2.5rem;
+      padding: 0.7rem 2rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 200;
+      font-size: 0.75rem;
+      color: rgba(232, 228, 223, 0.45);
+      background: transparent;
+      border: 1px solid rgba(232, 228, 223, 0.1);
+      border-radius: 50px;
+      cursor: pointer;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: all 0.4s ease;
+    }
+
+    .overlay-close:hover {
+      color: rgba(232, 228, 223, 0.7);
+      border-color: rgba(232, 228, 223, 0.25);
+    }
+
+    /* ============================================
+       PANTALLA FINAL (contador en cero)
+       ============================================ */
+    #final-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 300;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 3s ease, visibility 3s ease;
+    }
+
+    #final-screen.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .final-main {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: clamp(2.5rem, 10vw, 5rem);
+      color: #0a0a0c;
+      letter-spacing: -0.02em;
+    }
+
+    .final-sub {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(1rem, 3vw, 1.4rem);
+      color: #0a0a0c;
+      margin-top: 1.5rem;
+      opacity: 0;
+      transition: opacity 2s ease 1.5s;
+    }
+
+    #final-screen.active .final-sub {
+      opacity: 1;
+    }
+
+    /* ============================================
+       RESPONSIVE AJUSTES FINOS
+       ============================================ */
+    @media (max-width: 480px) {
+      .countdown-units {
+        gap: 0.6rem;
+      }
+      .countdown-separator {
+        font-size: 1.2rem;
+        margin-top: 0.5rem;
+      }
+      .overlay-content {
+        padding: 2.5rem 1.5rem;
+      }
+      .overlay-text {
+        line-height: 2;
+      }
+    }
+
+    @media (max-height: 600px) {
+      .heartbeat {
+        margin-top: 1rem;
+      }
+      .action-btn {
+        margin-top: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Canvas para partículas / estrellas -->
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- Aurora boreal animada -->
+  <div class="aurora" id="aurora"></div>
+
+  <!-- ============================================
+       PANTALLA INTRO
+       ============================================ -->
+  <div id="intro-screen">
+    <p class="intro-line" id="intro-line-1">Hay 3.114 kilómetros entre nosotros.</p>
+    <p class="intro-line" id="intro-line-2" style="margin-top: 1rem;">Pero ni uno solo entre nuestros corazones.</p>
+  </div>
+
+  <!-- ============================================
+       PANTALLA PRINCIPAL
+       ============================================ -->
+  <div id="main-screen">
+    <div class="countdown-container">
+      <div class="countdown-label">Nos volvemos a ver en</div>
+
+      <div class="countdown-units">
+        <div class="countdown-unit">
+          <span class="countdown-value" id="days">--</span>
+          <span class="countdown-unit-label">Días</span>
+        </div>
+        <span class="countdown-separator">:</span>
+        <div class="countdown-unit">
+          <span class="countdown-value" id="hours">--</span>
+          <span class="countdown-unit-label">Horas</span>
+        </div>
+        <span class="countdown-separator">:</span>
+        <div class="countdown-unit">
+          <span class="countdown-value" id="minutes">--</span>
+          <span class="countdown-unit-label">Minutos</span>
+        </div>
+        <span class="countdown-separator">:</span>
+        <div class="countdown-unit">
+          <span class="countdown-value" id="seconds">--</span>
+          <span class="countdown-unit-label">Segundos</span>
+        </div>
+      </div>
+
+      <p class="sub-message">Cada segundo que pasa es uno menos sin ti.</p>
+
+      <div class="week-message" id="week-message">
+        La próxima vez que nos abracemos… ya no será un sueño.
+      </div>
+    </div>
+
+    <!-- Corazón con latido -->
+    <div class="heartbeat" aria-hidden="true">&#10084;</div>
+
+    <!-- Botón interactivo -->
+    <button class="action-btn" id="open-overlay">
+      Cuando la distancia pese, pulsa aquí
+    </button>
+  </div>
+
+  <!-- ============================================
+       OVERLAY CON MENSAJE ROMÁNTICO
+       ============================================ -->
+  <div class="overlay-backdrop" id="overlay">
+    <div class="overlay-content">
+      <p class="overlay-text">
+        No estoy contigo por costumbre.<br><br>
+        No estoy contigo por casualidad.<br><br>
+        Estoy contigo porque te elijo.<br><br>
+        Y volvería a elegirte incluso a 3.114 kilómetros.
+      </p>
+      <button class="overlay-close" id="close-overlay">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- ============================================
+       PANTALLA FINAL
+       ============================================ -->
+  <div id="final-screen">
+    <p class="final-main">Corre.</p>
+    <p class="final-sub">Ya estoy ahí. &#10084;&#65039;</p>
+  </div>
+
+  <script>
+    /* ============================================
+       SISTEMA DE PARTÍCULAS (estrellas sutiles)
+       ============================================ */
+    (function initParticles() {
+      const canvas = document.getElementById('particles-canvas');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      let animationId;
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function createParticles() {
+        // Densidad adaptada al tamaño de pantalla
+        const count = Math.floor((canvas.width * canvas.height) / 8000);
+        particles = [];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            radius: Math.random() * 1.2 + 0.3,
+            alpha: Math.random() * 0.5 + 0.1,
+            drift: (Math.random() - 0.5) * 0.15,
+            speed: Math.random() * 0.12 + 0.02,
+            pulse: Math.random() * Math.PI * 2,
+            pulseSpeed: Math.random() * 0.008 + 0.003
+          });
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(function(p) {
+          p.pulse += p.pulseSpeed;
+          p.y -= p.speed;
+          p.x += p.drift;
+
+          // Reaparición al salir de la pantalla
+          if (p.y < -5) { p.y = canvas.height + 5; p.x = Math.random() * canvas.width; }
+          if (p.x < -5) p.x = canvas.width + 5;
+          if (p.x > canvas.width + 5) p.x = -5;
+
+          var currentAlpha = p.alpha * (0.6 + 0.4 * Math.sin(p.pulse));
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(232, 228, 223, ' + currentAlpha + ')';
+          ctx.fill();
+        });
+        animationId = requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', function() {
+        resize();
+        createParticles();
+      });
+
+      resize();
+      createParticles();
+      draw();
+    })();
+
+    /* ============================================
+       SECUENCIA DE INTRO
+       ============================================ */
+    (function introSequence() {
+      var line1 = document.getElementById('intro-line-1');
+      var line2 = document.getElementById('intro-line-2');
+      var introScreen = document.getElementById('intro-screen');
+      var mainScreen = document.getElementById('main-screen');
+
+      // Línea 1: aparece tras 0.8s
+      setTimeout(function() {
+        line1.classList.add('visible');
+      }, 800);
+
+      // Línea 2: aparece tras 3.5s (0.8 + fade + pausa de 2s)
+      setTimeout(function() {
+        line2.classList.add('visible');
+      }, 3500);
+
+      // Ambas líneas hacen fade-out tras 7s
+      setTimeout(function() {
+        line1.classList.add('fade-out');
+        line2.classList.add('fade-out');
+      }, 7000);
+
+      // Intro desaparece y main aparece tras 8.5s
+      setTimeout(function() {
+        introScreen.classList.add('hidden');
+        mainScreen.classList.add('visible');
+      }, 8500);
+    })();
+
+    /* ============================================
+       CUENTA ATRÁS
+       ============================================ */
+    (function countdown() {
+      var targetDate = new Date('2026-03-19T00:00:00');
+      var daysEl = document.getElementById('days');
+      var hoursEl = document.getElementById('hours');
+      var minutesEl = document.getElementById('minutes');
+      var secondsEl = document.getElementById('seconds');
+      var weekMessage = document.getElementById('week-message');
+      var aurora = document.getElementById('aurora');
+      var finalScreen = document.getElementById('final-screen');
+      var finalShown = false;
+
+      function pad(n) {
+        return n < 10 ? '0' + n : String(n);
+      }
+
+      function update() {
+        var now = new Date();
+        var diff = targetDate.getTime() - now.getTime();
+
+        // Contador llegó a cero
+        if (diff <= 0) {
+          daysEl.textContent = '00';
+          hoursEl.textContent = '00';
+          minutesEl.textContent = '00';
+          secondsEl.textContent = '00';
+
+          if (!finalShown) {
+            finalShown = true;
+            finalScreen.classList.add('active');
+          }
+          return;
+        }
+
+        var totalSeconds = Math.floor(diff / 1000);
+        var d = Math.floor(totalSeconds / 86400);
+        var h = Math.floor((totalSeconds % 86400) / 3600);
+        var m = Math.floor((totalSeconds % 3600) / 60);
+        var s = totalSeconds % 60;
+
+        daysEl.textContent = pad(d);
+        hoursEl.textContent = pad(h);
+        minutesEl.textContent = pad(m);
+        secondsEl.textContent = pad(s);
+
+        // Menos de 7 días: mostrar mensaje especial
+        var sevenDays = 7 * 24 * 60 * 60 * 1000;
+        if (diff < sevenDays) {
+          weekMessage.classList.add('visible');
+        }
+
+        // Menos de 24 horas: aurora cálida
+        var oneDay = 24 * 60 * 60 * 1000;
+        if (diff < oneDay) {
+          aurora.classList.add('warm');
+        }
+      }
+
+      update();
+      setInterval(update, 1000);
+    })();
+
+    /* ============================================
+       OVERLAY
+       ============================================ */
+    (function overlay() {
+      var openBtn = document.getElementById('open-overlay');
+      var closeBtn = document.getElementById('close-overlay');
+      var backdrop = document.getElementById('overlay');
+
+      openBtn.addEventListener('click', function() {
+        backdrop.classList.add('active');
+      });
+
+      closeBtn.addEventListener('click', function() {
+        backdrop.classList.remove('active');
+      });
+
+      // Cerrar al hacer click fuera del contenido
+      backdrop.addEventListener('click', function(e) {
+        if (e.target === backdrop) {
+          backdrop.classList.remove('active');
+        }
+      });
+
+      // Cerrar con Escape
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && backdrop.classList.contains('active')) {
+          backdrop.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
