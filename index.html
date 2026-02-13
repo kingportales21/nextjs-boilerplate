@@ -42,7 +42,7 @@
       width: 100%;
       height: 100%;
       z-index: 0;
-      pointer-events: auto;
+      pointer-events: none;
     }
 
     /* ============================================
@@ -108,10 +108,10 @@
     .intro-line {
       font-family: 'Cormorant Garamond', serif;
       font-weight: 300;
-      font-size: clamp(1.2rem, 4vw, 2rem);
+      font-size: clamp(1.4rem, 5vw, 2rem);
       text-align: center;
       line-height: 1.6;
-      padding: 0 2rem;
+      padding: 0 1.5rem;
       opacity: 0;
       transform: translateY(12px);
       transition: opacity 2s ease, transform 2s ease;
@@ -161,8 +161,8 @@
       font-family: 'Cormorant Garamond', serif;
       font-weight: 300;
       font-style: italic;
-      font-size: clamp(0.85rem, 2.5vw, 1.1rem);
-      color: rgba(232, 228, 223, 0.5);
+      font-size: clamp(1rem, 3vw, 1.1rem);
+      color: rgba(232, 228, 223, 0.6);
       letter-spacing: 0.15em;
       text-transform: uppercase;
       margin-bottom: 1.5rem;
@@ -184,7 +184,7 @@
     .countdown-value {
       font-family: 'Cormorant Garamond', serif;
       font-weight: 300;
-      font-size: clamp(2.5rem, 10vw, 5.5rem);
+      font-size: clamp(3rem, 12vw, 5.5rem);
       line-height: 1;
       letter-spacing: -0.02em;
       color: #e8e4df;
@@ -194,8 +194,8 @@
     .countdown-unit-label {
       font-family: 'Inter', sans-serif;
       font-weight: 200;
-      font-size: clamp(0.55rem, 1.8vw, 0.75rem);
-      color: rgba(232, 228, 223, 0.4);
+      font-size: clamp(0.65rem, 2vw, 0.75rem);
+      color: rgba(232, 228, 223, 0.5);
       letter-spacing: 0.2em;
       text-transform: uppercase;
       margin-top: 0.5rem;
@@ -217,24 +217,26 @@
       font-family: 'Cormorant Garamond', serif;
       font-weight: 300;
       font-style: italic;
-      font-size: clamp(0.9rem, 2.5vw, 1.15rem);
-      color: rgba(232, 228, 223, 0.55);
+      font-size: clamp(1.05rem, 3vw, 1.15rem);
+      color: rgba(232, 228, 223, 0.6);
       text-align: center;
-      margin-top: 0.5rem;
+      margin-top: 0.8rem;
       letter-spacing: 0.01em;
+      padding: 0 1rem;
     }
 
     /* Mensaje de < 7 días */
     .week-message {
       font-family: 'Cormorant Garamond', serif;
       font-weight: 400;
-      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-size: clamp(1rem, 2.5vw, 1.05rem);
       color: rgba(232, 228, 223, 0.7);
       text-align: center;
       margin-top: 1.5rem;
       opacity: 0;
       transition: opacity 2s ease;
       max-width: 500px;
+      padding: 0 1rem;
     }
 
     .week-message.visible {
@@ -272,18 +274,20 @@
     }
 
     .action-btn {
-      padding: 0.8rem 2rem;
+      padding: 1rem 2rem;
       font-family: 'Inter', sans-serif;
       font-weight: 300;
-      font-size: clamp(0.7rem, 1.8vw, 0.8rem);
-      color: rgba(232, 228, 223, 0.6);
+      font-size: clamp(0.85rem, 2.2vw, 0.9rem);
+      color: rgba(232, 228, 223, 0.7);
       background: transparent;
-      border: 1px solid rgba(232, 228, 223, 0.15);
+      border: 1px solid rgba(232, 228, 223, 0.2);
       border-radius: 50px;
       cursor: pointer;
       letter-spacing: 0.08em;
       transition: all 0.5s ease;
       min-width: 280px;
+      width: 90%;
+      max-width: 340px;
     }
 
     .action-btn:hover {
@@ -338,21 +342,21 @@
     .overlay-text {
       font-family: 'Cormorant Garamond', serif;
       font-weight: 300;
-      font-size: clamp(1.1rem, 3.5vw, 1.5rem);
-      line-height: 2.2;
-      color: rgba(232, 228, 223, 0.9);
+      font-size: clamp(1.25rem, 4.5vw, 1.5rem);
+      line-height: 2;
+      color: rgba(232, 228, 223, 0.95);
       letter-spacing: 0.01em;
     }
 
     .overlay-close {
       margin-top: 2.5rem;
-      padding: 0.7rem 2rem;
+      padding: 0.9rem 2.5rem;
       font-family: 'Inter', sans-serif;
-      font-weight: 200;
-      font-size: 0.75rem;
-      color: rgba(232, 228, 223, 0.45);
+      font-weight: 300;
+      font-size: 0.85rem;
+      color: rgba(232, 228, 223, 0.55);
       background: transparent;
-      border: 1px solid rgba(232, 228, 223, 0.1);
+      border: 1px solid rgba(232, 228, 223, 0.15);
       border-radius: 50px;
       cursor: pointer;
       letter-spacing: 0.12em;
@@ -417,27 +421,117 @@
        RESPONSIVE AJUSTES FINOS
        ============================================ */
     @media (max-width: 480px) {
-      .countdown-units {
-        gap: 0.6rem;
+      #main-screen {
+        padding: 1.5rem 1rem;
+        justify-content: center;
       }
+
+      .countdown-container {
+        margin-bottom: 1.2rem;
+      }
+
+      .countdown-units {
+        gap: 0.5rem;
+      }
+
+      .countdown-value {
+        font-size: 2.8rem;
+      }
+
+      .countdown-unit-label {
+        font-size: 0.6rem;
+      }
+
       .countdown-separator {
         font-size: 1.2rem;
-        margin-top: 0.5rem;
+        margin-top: 0.4rem;
       }
+
+      .countdown-label {
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+      }
+
+      .sub-message {
+        font-size: 1rem;
+      }
+
+      .action-buttons {
+        margin-top: 1.2rem;
+        gap: 0.6rem;
+        width: 100%;
+        align-items: center;
+      }
+
+      .action-btn {
+        font-size: 0.82rem;
+        padding: 0.9rem 1.5rem;
+        width: 95%;
+        min-width: unset;
+      }
+
+      .heartbeat {
+        margin-top: 1rem;
+      }
+
+      .overlay-backdrop {
+        align-items: flex-start;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
       .overlay-content {
-        padding: 2.5rem 1.5rem;
+        padding: 2rem 1.5rem;
+        margin: 2rem 0;
       }
+
       .overlay-text {
-        line-height: 2;
+        font-size: 1.2rem;
+        line-height: 1.9;
+      }
+
+      .overlay-close {
+        font-size: 0.8rem;
+        padding: 0.85rem 2rem;
+      }
+    }
+
+    /* Pantallas muy pequeñas (iPhone SE, etc) */
+    @media (max-width: 375px) {
+      .countdown-value {
+        font-size: 2.4rem;
+      }
+
+      .action-btn {
+        font-size: 0.78rem;
+        padding: 0.85rem 1.2rem;
       }
     }
 
     @media (max-height: 600px) {
       .heartbeat {
+        margin-top: 0.8rem;
+      }
+      .countdown-container {
+        margin-bottom: 0.8rem;
+      }
+      .action-buttons {
         margin-top: 1rem;
+        gap: 0.5rem;
+      }
+    }
+
+    /* Pantallas muy altas (tablets en vertical) */
+    @media (min-height: 800px) and (max-width: 480px) {
+      .countdown-value {
+        font-size: 3.2rem;
       }
       .action-btn {
-        margin-top: 1.5rem;
+        font-size: 0.9rem;
+        padding: 1.1rem 2rem;
+      }
+      .sub-message {
+        font-size: 1.1rem;
       }
     }
   </style>
@@ -534,7 +628,8 @@
       var particles = [];
       var animationId;
       var mouse = { x: -1000, y: -1000 };
-      var PARTICLE_COUNT = 600;
+      var isMobile = window.innerWidth <= 600;
+      var PARTICLE_COUNT = isMobile ? 250 : 600;
       var SPEED = 0.8;
       var TRAIL_OPACITY = 0.12;
       var COLOR = '#818cf8'; // Indigo-400
@@ -635,25 +730,23 @@
         init();
       });
 
-      canvas.addEventListener('mousemove', function(e) {
-        var rect = canvas.getBoundingClientRect();
-        mouse.x = e.clientX - rect.left;
-        mouse.y = e.clientY - rect.top;
+      document.addEventListener('mousemove', function(e) {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
       });
 
-      canvas.addEventListener('mouseleave', function() {
+      document.addEventListener('mouseleave', function() {
         mouse.x = -1000;
         mouse.y = -1000;
       });
 
       // Touch support
-      canvas.addEventListener('touchmove', function(e) {
-        var rect = canvas.getBoundingClientRect();
-        mouse.x = e.touches[0].clientX - rect.left;
-        mouse.y = e.touches[0].clientY - rect.top;
+      document.addEventListener('touchmove', function(e) {
+        mouse.x = e.touches[0].clientX;
+        mouse.y = e.touches[0].clientY;
       });
 
-      canvas.addEventListener('touchend', function() {
+      document.addEventListener('touchend', function() {
         mouse.x = -1000;
         mouse.y = -1000;
       });
