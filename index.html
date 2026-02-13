@@ -693,15 +693,51 @@
       var overlayText = document.getElementById('overlay-text');
 
       var messages = {
-        'miss': 'Cierra los ojos.<br><br>Respira.<br><br>Ese latido que sientes… el mío suena igual.<br><br>No estás sola. Nunca lo estás.<br><br>Porque cada vez que me echas de menos, yo ya estoy pensando en ti.',
-        'bad-day': 'Oye.<br><br>No tienes que ser fuerte todo el tiempo.<br><br>Hoy fue un mal día, no una mala vida.<br><br>Y aunque no pueda abrazarte ahora mismo, quiero que sepas que eres lo más bonito que me ha pasado.<br><br>Mañana saldrá el sol. Y si no sale, yo seré tu sol.',
-        'doubt': 'No dudes.<br><br>No dudes de lo que siento, porque ni la distancia, ni el tiempo, ni los 3.114 kilómetros han podido con esto.<br><br>Te elegí. Te elijo. Y te voy a seguir eligiendo.<br><br>Cada día. Sin excepción.'
+        'miss': [
+          'Cierra los ojos.<br><br>Respira.<br><br>Ese latido que sientes… el mío suena igual.<br><br>No estás sola. Nunca lo estás.<br><br>Porque cada vez que me echas de menos, yo ya estoy pensando en ti.',
+          'Ahora mismo, en algún lugar a 3.114 km de ti, alguien está mirando el cielo y pensando en tu sonrisa.<br><br>Ese alguien soy yo.<br><br>Siempre soy yo.',
+          '¿Sabes qué hago cuando te echo de menos?<br><br>Respiro hondo y recuerdo que cada segundo que pasa es uno menos para volver a abrazarte.<br><br>Y eso lo cambia todo.',
+          'Si pudieras sentir lo que siento ahora mismo, no te cabrían dudas de lo mucho que te echo de menos.<br><br>Pero tranquila.<br><br>Pronto no habrá distancia. Solo tú y yo.',
+          'Echo de menos tu risa.<br><br>Echo de menos tu voz diciendo tonterías.<br><br>Echo de menos todo.<br><br>Pero lo que más echo de menos es no poder decirte al oído: estoy aquí.',
+          'A veces miro la hora y calculo qué estarás haciendo.<br><br>Y me quedo tranquilo solo con imaginarte.<br><br>Porque saber que existes, aunque lejos, ya es suficiente para que mi día tenga sentido.',
+          'No es fácil quererte desde lejos.<br><br>Pero es imposible no hacerlo.<br><br>Así que aquí sigo. Echándote de menos con todas mis fuerzas. Y queriéndote con más.'
+        ],
+        'bad-day': [
+          'Oye.<br><br>No tienes que ser fuerte todo el tiempo.<br><br>Hoy fue un mal día, no una mala vida.<br><br>Y aunque no pueda abrazarte ahora mismo, quiero que sepas que eres lo más bonito que me ha pasado.<br><br>Mañana saldrá el sol. Y si no sale, yo seré tu sol.',
+          'Si pudiera, cruzaría esos 3.114 km ahora mismo solo para sentarme a tu lado y decirte:<br><br>no pasa nada.<br><br>Estoy contigo. Aunque no me veas, estoy contigo.',
+          'Los días malos son solo eso: días.<br><br>Pasan. Siempre pasan.<br><br>Lo que no pasa es lo que siento por ti. Eso se queda para siempre.',
+          'Hoy el mundo fue duro contigo.<br><br>Pero el mundo no sabe lo increíble que eres.<br><br>Yo sí lo sé. Y por eso estoy aquí, recordándotelo las veces que haga falta.',
+          'No necesitas tener todo bajo control.<br><br>No necesitas sonreír si no te sale.<br><br>Solo necesitas saber que pase lo que pase, al otro lado de la distancia hay alguien que te quiere exactamente como eres. Hoy y siempre.',
+          'Ojalá pudiera quitarte todo lo malo de encima.<br><br>Ojalá mis brazos llegaran hasta ahí.<br><br>Pero mientras tanto, quédate con esto: eres más fuerte de lo que crees, más valiosa de lo que imaginas, y más querida de lo que sabes.',
+          'Un mal día no define quién eres.<br><br>Tú eres la persona que me hace sonreír sin motivo, que me calma con solo existir.<br><br>Así que respira. Mañana será mejor. Y si no, yo estaré aquí también.'
+        ],
+        'doubt': [
+          'No dudes.<br><br>No dudes de lo que siento, porque ni la distancia, ni el tiempo, ni los 3.114 kilómetros han podido con esto.<br><br>Te elegí. Te elijo. Y te voy a seguir eligiendo.<br><br>Cada día. Sin excepción.',
+          'Si algún día dudas de esto, recuerda:<br><br>Nadie cruza un océano de distancia por costumbre.<br><br>Nadie cuenta los días para ver a alguien por casualidad.<br><br>Esto es real. Tú y yo somos reales.',
+          '¿Dudas?<br><br>Entonces déjame recordarte algo: cada mensaje, cada llamada, cada "buenas noches" cruzando miles de kilómetros… nada de eso es obligación.<br><br>Es decisión.<br><br>Mi decisión. Cada día.',
+          'La distancia puede hacer que todo se sienta frágil.<br><br>Pero lo nuestro no es frágil.<br><br>Lo nuestro es de las cosas que sobreviven. Que resisten. Que valen cada segundo de espera.',
+          'Sé que a veces la cabeza te juega malas pasadas.<br><br>Sé que la distancia pesa.<br><br>Pero quiero que sepas algo: no hay ni un solo momento del día en que no esté seguro de ti.<br><br>De nosotros.',
+          'No estoy contigo por costumbre.<br><br>No estoy contigo por casualidad.<br><br>Estoy contigo porque te elijo.<br><br>Y volvería a elegirte incluso a 3.114 kilómetros. Incluso a más.',
+          'Las dudas son normales. La distancia las alimenta.<br><br>Pero escúchame bien: lo que siento por ti no tiene distancia.<br><br>Es infinito. Es terco. Es mío y es tuyo.<br><br>Y no se va a ir a ningún lado.'
+        ]
       };
+
+      // Selecciona un mensaje diferente cada día basado en el día del año
+      function getDayOfYear() {
+        var now = new Date();
+        var start = new Date(now.getFullYear(), 0, 0);
+        var diff = now - start;
+        return Math.floor(diff / 86400000);
+      }
+
+      var dayOfYear = getDayOfYear();
 
       buttons.forEach(function(btn) {
         btn.addEventListener('click', function() {
           var key = btn.getAttribute('data-overlay');
-          overlayText.innerHTML = messages[key];
+          var pool = messages[key];
+          var index = dayOfYear % pool.length;
+          overlayText.innerHTML = pool[index];
           backdrop.classList.add('active');
         });
       });
