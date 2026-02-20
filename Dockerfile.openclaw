@@ -5,19 +5,24 @@ ARG OPENCLAW_DOCKER_APT_PACKAGES=""
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     git \
+    python3 \
+    make \
+    g++ \
     curl \
     ca-certificates \
     ${OPENCLAW_DOCKER_APT_PACKAGES} && \
     rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g openclaw@latest
+RUN npm install -g openclaw@latest --unsafe-perm
 
-RUN useradd -m -s /bin/bash -u 1000 clawuser || true
+# Node global modules path
+ENV NODE_PATH=/usr/local/lib/node_modules
+
+RUN mkdir -p /data/.openclaw /data/workspace && \
+    chown -R 1000:1000 /data
 
 USER 1000
-WORKDIR /home/node/workspace
-
-RUN mkdir -p /home/node/.openclaw
+WORKDIR /data/workspace
 
 EXPOSE 18789
 
