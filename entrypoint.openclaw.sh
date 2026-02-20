@@ -1,6 +1,5 @@
 #!/bin/bash
-# Entrypoint: inicia OpenClaw en puerto interno y usa socat
-# para exponer en 0.0.0.0 (accesible desde fuera del contenedor)
+# Entrypoint: inicia OpenClaw en puerto interno + proxy Node.js en 0.0.0.0
 
 INTERNAL_PORT=18790
 EXTERNAL_PORT=18789
@@ -19,12 +18,10 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-# Proxy: 0.0.0.0:18789 -> 127.0.0.1:18790
-echo "[entrypoint] starting proxy 0.0.0.0:$EXTERNAL_PORT -> 127.0.0.1:$INTERNAL_PORT"
-socat TCP-LISTEN:$EXTERNAL_PORT,fork,reuseaddr,bind=0.0.0.0 TCP:127.0.0.1:$INTERNAL_PORT &
-SOCAT_PID=$!
+# Proxy HTTP+WebSocket: 0.0.0.0:18789 -> 127.0.0.1:18790
+echo "[entrypoint] starting HTTP/WS proxy 0.0.0.0:$EXTERNAL_PORT -> 127.0.0.1:$INTERNAL_PORT"
+INTERNAL_PORT=$INTERNAL_PORT EXTERNAL_PORT=$EXTERNAL_PORT node /usr/local/bin/proxy.openclaw.mjs &
+PROXY_PID=$!
 
-# Si alguno muere, matar el otro
-trap "kill $GATEWAY_PID $SOCAT_PID 2>/dev/null" EXIT
-
+trap "kill $GATEWAY_PID $PROXY_PID 2>/dev/null" EXIT
 wait $GATEWAY_PID

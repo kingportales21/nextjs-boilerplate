@@ -9,7 +9,6 @@ RUN apt-get update && \
     make \
     g++ \
     curl \
-    socat \
     ca-certificates \
     ${OPENCLAW_DOCKER_APT_PACKAGES} && \
     rm -rf /var/lib/apt/lists/*
@@ -26,6 +25,7 @@ USER 1000
 WORKDIR /data/workspace
 
 COPY entrypoint.openclaw.sh /usr/local/bin/entrypoint.sh
+COPY proxy.openclaw.mjs /usr/local/bin/proxy.openclaw.mjs
 
 EXPOSE 18789
 
