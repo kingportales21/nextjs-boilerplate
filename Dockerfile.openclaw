@@ -9,6 +9,7 @@ RUN apt-get update && \
     make \
     g++ \
     curl \
+    socat \
     ca-certificates \
     ${OPENCLAW_DOCKER_APT_PACKAGES} && \
     rm -rf /var/lib/apt/lists/*
@@ -24,6 +25,8 @@ RUN mkdir -p /data/.openclaw /data/workspace && \
 USER 1000
 WORKDIR /data/workspace
 
+COPY entrypoint.openclaw.sh /usr/local/bin/entrypoint.sh
+
 EXPOSE 18789
 
-CMD ["openclaw", "gateway", "--host", "0.0.0.0", "--port", "18789"]
+CMD ["/usr/local/bin/entrypoint.sh"]
