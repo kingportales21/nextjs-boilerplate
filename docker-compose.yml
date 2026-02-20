@@ -9,6 +9,8 @@ services:
     restart: unless-stopped
     ports:
       - "${OPENCLAW_PORT:-18789}:18800"
+      # Puerto del Browser Relay (extension de Chrome)
+      - "18792:18792"
     volumes:
       # Configuracion persistente de OpenClaw
       - openclaw-data:/data/.openclaw
