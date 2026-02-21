@@ -341,7 +341,7 @@ export default function Home() {
               </div>
             </a>
             <a
-              href="https://console.anthropic.com"
+              href="https://aistudio.google.com/apikey"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 rounded-lg border border-zinc-200 p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
@@ -349,10 +349,10 @@ export default function Home() {
               <span className="text-lg">🔑</span>
               <div>
                 <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                  Anthropic Console
+                  Google AI Studio
                 </p>
                 <p className="text-xs text-zinc-500">
-                  Obtener API key
+                  Obtener API key de Gemini
                 </p>
               </div>
             </a>

@@ -1,6 +1,6 @@
 {
   "agent": {
-    "model": "anthropic/claude-opus-4-6",
+    "model": "google/gemini-2.0-flash",
     "systemPrompt": "Eres un asistente personal conectado via Telegram. Responde de forma clara y concisa en el idioma del usuario."
   },
   "gateway": {

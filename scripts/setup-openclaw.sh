@@ -81,32 +81,32 @@ if [ -z "${TELEGRAM_TOKEN:-}" ]; then
 fi
 
 # --------------------------------------------------
-# 4. Configurar la API key de Anthropic
+# 4. Configurar la API key de Gemini
 # --------------------------------------------------
-print_step "Configurando API key de Anthropic..."
+print_step "Configurando API key de Google Gemini..."
 echo ""
-echo "  Para obtener tu API key de Anthropic:"
-echo "  1. Ve a https://console.anthropic.com"
-echo "  2. Crea una cuenta o inicia sesion"
-echo "  3. Ve a 'API Keys' y genera una nueva"
+echo "  Para obtener tu API key de Gemini:"
+echo "  1. Ve a https://aistudio.google.com/apikey"
+echo "  2. Inicia sesion con tu cuenta de Google"
+echo "  3. Haz clic en 'Create API Key' y copia la clave"
 echo ""
 
-ANTHROPIC_KEY=""
+GEMINI_KEY=""
 if [ -f .env.local ]; then
-    EXISTING_KEY=$(grep -s "^ANTHROPIC_API_KEY=" .env.local | cut -d= -f2- || true)
+    EXISTING_KEY=$(grep -s "^GEMINI_API_KEY=" .env.local | cut -d= -f2- || true)
     if [ -n "$EXISTING_KEY" ] && [ "$EXISTING_KEY" != "tu_api_key_aqui" ]; then
-        print_ok "API key de Anthropic encontrada en .env.local"
+        print_ok "API key de Gemini encontrada en .env.local"
         read -p "  Quieres cambiarla? (s/n): " CHANGE_KEY
         if [[ ! "$CHANGE_KEY" =~ ^[sS]$ ]]; then
-            ANTHROPIC_KEY="$EXISTING_KEY"
+            GEMINI_KEY="$EXISTING_KEY"
         fi
     fi
 fi
 
-if [ -z "${ANTHROPIC_KEY:-}" ]; then
-    read -p "  Introduce tu API key de Anthropic: " ANTHROPIC_KEY
-    if [ -z "$ANTHROPIC_KEY" ]; then
-        print_warn "Sin API key de Anthropic. Podras configurarla mas tarde en .env.local"
+if [ -z "${GEMINI_KEY:-}" ]; then
+    read -p "  Introduce tu API key de Gemini: " GEMINI_KEY
+    if [ -z "$GEMINI_KEY" ]; then
+        print_warn "Sin API key de Gemini. Podras configurarla mas tarde en .env.local"
     fi
 fi
 
@@ -119,7 +119,7 @@ cat > .env.local << EOF
 TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN}
 OPENCLAW_GATEWAY_PORT=18789
 NEXT_PUBLIC_OPENCLAW_GATEWAY_URL=ws://127.0.0.1:18789
-ANTHROPIC_API_KEY=${ANTHROPIC_KEY}
+GEMINI_API_KEY=${GEMINI_KEY}
 EOF
 print_ok "Archivo .env.local creado"
 
@@ -134,7 +134,7 @@ mkdir -p "$OPENCLAW_DIR"
 cat > "$OPENCLAW_DIR/openclaw.json" << EOF
 {
   "agent": {
-    "model": "anthropic/claude-opus-4-6",
+    "model": "google/gemini-2.0-flash",
     "systemPrompt": "Eres un asistente personal conectado via Telegram. Responde de forma clara y concisa en el idioma del usuario."
   },
   "gateway": {
