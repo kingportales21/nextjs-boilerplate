@@ -1,30 +1,35 @@
 {
-  "agent": {
-    "model": "google/gemini-2.0-flash",
-    "systemPrompt": "Eres un asistente personal conectado via Telegram. Responde de forma clara y concisa en el idioma del usuario."
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "google/gemini-3.1-pro"
+      },
+      "compaction": {
+        "mode": "safeguard"
+      }
+    }
   },
-  "gateway": {
-    "port": 18789,
-    "bind": "loopback"
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
   },
   "channels": {
     "telegram": {
       "enabled": true,
-      "botToken": "${TELEGRAM_BOT_TOKEN}",
       "dmPolicy": "pairing",
-      "streaming": true,
-      "reactionLevel": "minimal",
-      "groups": {
-        "*": {
-          "requireMention": true
-        }
-      },
-      "actions": {
-        "sendMessage": true,
-        "editMessage": true,
-        "deleteMessage": false,
-        "reactions": true,
-        "sticker": false
+      "groupPolicy": "allowlist",
+      "streaming": false
+    }
+  },
+  "gateway": {
+    "mode": "local"
+  },
+  "plugins": {
+    "entries": {
+      "telegram": {
+        "enabled": true
       }
     }
   }

@@ -38,7 +38,7 @@ print_ok "Node.js v$(node -v) detectado"
 # --------------------------------------------------
 print_step "Instalando OpenClaw..."
 if command -v openclaw &> /dev/null; then
-    print_ok "OpenClaw ya esta instalado ($(openclaw --version 2>/dev/null || echo 'version desconocida'))"
+    print_ok "OpenClaw ya esta instalado ($(openclaw -v 2>/dev/null || echo 'version desconocida'))"
     read -p "  Quieres actualizar a la ultima version? (s/n): " UPDATE
     if [[ "$UPDATE" =~ ^[sS]$ ]]; then
         npm install -g openclaw@latest
@@ -61,6 +61,7 @@ echo "  3. Sigue las instrucciones para crear el bot"
 echo "  4. Copia el token que te proporcione"
 echo ""
 
+TELEGRAM_TOKEN=""
 if [ -f .env.local ]; then
     EXISTING_TOKEN=$(grep -s "^TELEGRAM_BOT_TOKEN=" .env.local | cut -d= -f2- || true)
     if [ -n "$EXISTING_TOKEN" ] && [ "$EXISTING_TOKEN" != "tu_token_aqui" ]; then
@@ -111,60 +112,29 @@ if [ -z "${GEMINI_KEY:-}" ]; then
 fi
 
 # --------------------------------------------------
-# 5. Crear archivo .env.local
+# 5. Configurar OpenClaw via CLI
+# --------------------------------------------------
+print_step "Configurando OpenClaw..."
+
+# Configurar gateway local
+openclaw config set gateway.mode local
+
+# Configurar modelo
+openclaw models set "google/gemini-3.1-pro"
+
+# Configurar canal Telegram con el token
+openclaw channels add --channel telegram --token "$TELEGRAM_TOKEN"
+
+# --------------------------------------------------
+# 6. Crear archivo .env.local
 # --------------------------------------------------
 print_step "Creando archivo .env.local..."
 cat > .env.local << EOF
 # OpenClaw + Telegram Bot - Configuracion
 TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN}
-OPENCLAW_GATEWAY_PORT=18789
-NEXT_PUBLIC_OPENCLAW_GATEWAY_URL=ws://127.0.0.1:18789
 GEMINI_API_KEY=${GEMINI_KEY}
 EOF
 print_ok "Archivo .env.local creado"
-
-# --------------------------------------------------
-# 6. Copiar configuracion de OpenClaw
-# --------------------------------------------------
-print_step "Configurando OpenClaw..."
-OPENCLAW_DIR="$HOME/.openclaw"
-mkdir -p "$OPENCLAW_DIR"
-
-# Generar config con el token real
-cat > "$OPENCLAW_DIR/openclaw.json" << EOF
-{
-  "agent": {
-    "model": "google/gemini-2.0-flash",
-    "systemPrompt": "Eres un asistente personal conectado via Telegram. Responde de forma clara y concisa en el idioma del usuario."
-  },
-  "gateway": {
-    "port": 18789,
-    "bind": "loopback"
-  },
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "botToken": "${TELEGRAM_TOKEN}",
-      "dmPolicy": "pairing",
-      "streaming": true,
-      "reactionLevel": "minimal",
-      "groups": {
-        "*": {
-          "requireMention": true
-        }
-      },
-      "actions": {
-        "sendMessage": true,
-        "editMessage": true,
-        "deleteMessage": false,
-        "reactions": true,
-        "sticker": false
-      }
-    }
-  }
-}
-EOF
-print_ok "Configuracion de OpenClaw creada en $OPENCLAW_DIR/openclaw.json"
 
 # --------------------------------------------------
 # 7. Instalar dependencias del proyecto Next.js
@@ -184,16 +154,13 @@ echo ""
 echo "  Proximos pasos:"
 echo ""
 echo "  1. Inicia el gateway de OpenClaw:"
-echo -e "     ${BLUE}openclaw gateway${NC}"
+echo -e "     ${BLUE}GEMINI_API_KEY=tu_key TELEGRAM_BOT_TOKEN=tu_token openclaw gateway run${NC}"
 echo ""
-echo "  2. En otra terminal, aprueba tu usuario de Telegram:"
-echo -e "     ${BLUE}openclaw pairing list telegram${NC}"
-echo -e "     ${BLUE}openclaw pairing approve telegram <CODIGO>${NC}"
+echo "  2. Verifica que Telegram esta conectado:"
+echo -e "     ${BLUE}openclaw health${NC}"
 echo ""
-echo "  3. Inicia el dashboard Next.js:"
-echo -e "     ${BLUE}npm run dev${NC}"
-echo ""
-echo "  4. Abre Telegram y envia un mensaje a tu bot"
+echo "  3. Abre Telegram y envia un mensaje a tu bot."
+echo "     Te pedira un codigo de emparejamiento."
 echo ""
 echo "  Para mas info: https://docs.openclaw.ai/channels/telegram"
 echo ""
