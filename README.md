@@ -29,6 +29,52 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## OpenClaw (Agente IA)
+
+OpenClaw se instala directamente en tu ordenador (sin Docker).
+
+### Requisitos
+
+- Node.js 18+
+- npm
+- Una API key de Gemini ([obtener aqui](https://aistudio.google.com/apikey))
+
+### Instalacion
+
+```bash
+# 1. Ejecutar el script de instalacion
+bash openclaw-setup.sh
+
+# 2. La primera vez, se creara .env.openclaw
+#    Edita ese archivo con tu API key de Gemini
+
+# 3. Vuelve a ejecutar el script
+bash openclaw-setup.sh
+```
+
+### Uso manual
+
+```bash
+# Instalar OpenClaw
+npm install -g openclaw@latest
+
+# Onboarding (primera vez)
+openclaw onboard
+
+# Iniciar el gateway
+openclaw gateway
+
+# Abrir en el navegador: http://127.0.0.1:18789/
+```
+
+### Comandos utiles
+
+| Comando | Descripcion |
+|---------|-------------|
+| `openclaw gateway` | Iniciar el gateway |
+| `openclaw --help` | Ver ayuda |
+| `openclaw channels add --channel telegram --token TU_TOKEN` | Conectar Telegram |
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
