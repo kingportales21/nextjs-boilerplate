@@ -1,0 +1,31 @@
+{
+  "agent": {
+    "model": "anthropic/claude-opus-4-6",
+    "systemPrompt": "Eres un asistente personal conectado via Telegram. Responde de forma clara y concisa en el idioma del usuario."
+  },
+  "gateway": {
+    "port": 18789,
+    "bind": "loopback"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "${TELEGRAM_BOT_TOKEN}",
+      "dmPolicy": "pairing",
+      "streaming": true,
+      "reactionLevel": "minimal",
+      "groups": {
+        "*": {
+          "requireMention": true
+        }
+      },
+      "actions": {
+        "sendMessage": true,
+        "editMessage": true,
+        "deleteMessage": false,
+        "reactions": true,
+        "sticker": false
+      }
+    }
+  }
+}

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup": "bash scripts/setup-openclaw.sh",
+    "openclaw:gateway": "openclaw gateway",
+    "openclaw:status": "openclaw channels status"
   },
   "dependencies": {
     "next": "16.0.3",
