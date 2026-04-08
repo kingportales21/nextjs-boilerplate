@@ -1,15 +1,18 @@
 /**
- * Claude-backed viral moment analyzer.
+ * Viral moment analyzer with pluggable LLM provider.
  *
  * Combines three signals into a single ranked list of candidate clips:
  *   1. YouTube Most Replayed heatmap peaks (real user behavior).
  *   2. Full timestamped transcript (narrative / semantic content).
  *   3. Video metadata (title, channel, description) for topical context.
  *
- * Claude is asked to return strict JSON so the UI can render it directly.
+ * The default provider is Gemini (cheap, huge context window — good for long
+ * Carwow España reviews). Claude Sonnet 4.6 is available as a fallback.
+ * Selection happens via the `AI_PROVIDER` env var.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import type { HeatmapMarker, VideoMetadata } from "./youtube";
 import { formatTime } from "./transcript";
 
@@ -40,17 +43,27 @@ export type AnalysisResult = {
   moments: ViralMoment[];
   usedHeatmap: boolean;
   usedTranscript: boolean;
+  provider: "gemini" | "claude";
   model: string;
 };
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-4-6";
+type AnalyzeInput = {
+  metadata: VideoMetadata;
+  heatmapPeaks: HeatmapMarker[] | null;
+  annotatedTranscript: string | null;
+};
+
+// --------------------------------------------------------------------------
+// Prompt
+// --------------------------------------------------------------------------
 
 const SYSTEM_PROMPT = `Eres un editor de video vertical especializado en contenido de automoción para el equipo de redes sociales de **Carwow España**. Tu trabajo es identificar los mejores momentos de un video largo de YouTube para cortarlos como Shorts / TikToks / Reels verticales (20-60 segundos cada uno).
 
 CONTEXTO DEL CANAL
 - Carwow España es la versión en castellano del canal británico Carwow.
-- El contenido típico incluye: reviews de coches, comparativas, drag races (carreras de aceleración), brake tests, vueltas rápidas, reacciones del presentador, chistes y frases icónicas, revelaciones de precios, tests 0-100, top speeds, sonido del motor, diseño, interior, y veredictos finales.
-- El público hispanohablante valora especialmente: reacciones emocionales del presentador, resultados de drag races, sorpresas, momentos "OMG", frases pegadizas en español y comparativas cara a cara.
+- El presentador principal es **JF Calero** (Juan Francisco Calero), no Mat Watson (Mat es el del canal británico en inglés).
+- El contenido típico incluye: reviews de coches, comparativas, drag races (carreras de aceleración), brake tests, vueltas rápidas, reacciones de JF Calero, chistes y frases icónicas en castellano, revelaciones de precios, tests 0-100, top speeds, sonido del motor, diseño, interior, y veredictos finales.
+- El público hispanohablante valora especialmente: reacciones emocionales de JF Calero, resultados de drag races, sorpresas, momentos "madre mía", frases pegadizas en castellano y comparativas cara a cara.
 
 ENTRADA QUE RECIBIRÁS
 - Metadatos del video (título, canal, descripción).
@@ -59,12 +72,12 @@ ENTRADA QUE RECIBIRÁS
 
 REGLAS PARA ELEGIR MOMENTOS
 1. Cada momento debe ser autocontenido: entendible sin haber visto el resto del video.
-2. Prioriza momentos donde un pico del heatmap coincida con un fragmento narrativamente fuerte del transcript (reacciones, remates, revelaciones, resultados de drag race, sorpresas, frases icónicas).
+2. Prioriza momentos donde un pico del heatmap coincida con un fragmento narrativamente fuerte del transcript (reacciones de JF Calero, remates, revelaciones, resultados de drag race, sorpresas, frases icónicas).
 3. Redondea los límites a segundos enteros. Duración entre 20 y 60 segundos. Arranca unos segundos ANTES del remate para dar contexto al espectador.
 4. NO elijas intros, outros, menciones a patrocinadores, llamadas a suscribirse ni secciones promocionales.
 5. Devuelve entre 3 y 6 momentos, ordenados por score (mayor primero). Si el video realmente tiene menos momentos fuertes, devuelve menos.
 6. Puntúa cada momento de 0 a 100 según tu confianza de que funcionará como Short standalone.
-7. Escribe \`title\`, \`description\` y \`reason\` en **español de España** (castellano), con el tono de Carwow España (cercano, directo, con gancho).
+7. Escribe \`title\`, \`description\` y \`reason\` en **español de España** (castellano), con el tono de Carwow España (cercano, directo, con gancho). Si mencionas al presentador, llámalo "JF Calero".
 8. El \`transcriptExcerpt\` debe ser una cita literal del transcript original (sin traducir).
 
 FORMATO DE RESPUESTA
@@ -86,45 +99,6 @@ Responde ÚNICAMENTE con JSON válido, sin bloques de código markdown ni coment
     }
   }>
 }`;
-
-type AnalyzeInput = {
-  metadata: VideoMetadata;
-  heatmapPeaks: HeatmapMarker[] | null;
-  annotatedTranscript: string | null;
-};
-
-export async function analyzeViralMoments(input: AnalyzeInput): Promise<AnalysisResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "ANTHROPIC_API_KEY is not set. Add it to .env.local before analyzing.",
-    );
-  }
-
-  const client = new Anthropic({ apiKey });
-  const userPrompt = buildUserPrompt(input);
-
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userPrompt }],
-  });
-
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Claude returned no text content.");
-  }
-
-  const moments = parseMomentsJson(textBlock.text, input.metadata.lengthSeconds);
-
-  return {
-    moments,
-    usedHeatmap: (input.heatmapPeaks?.length ?? 0) > 0,
-    usedTranscript: Boolean(input.annotatedTranscript),
-    model: MODEL,
-  };
-}
 
 function buildUserPrompt({
   metadata,
@@ -170,14 +144,123 @@ function buildUserPrompt({
   return parts.join("\n");
 }
 
+// --------------------------------------------------------------------------
+// Provider selection
+// --------------------------------------------------------------------------
+
+type Provider = "gemini" | "claude";
+
+function resolveProvider(): Provider {
+  const raw = (process.env.AI_PROVIDER ?? "gemini").toLowerCase();
+  if (raw === "claude" || raw === "anthropic") return "claude";
+  return "gemini";
+}
+
+function resolveModel(provider: Provider): string {
+  if (provider === "gemini") {
+    return process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+  }
+  return process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
+}
+
+// --------------------------------------------------------------------------
+// Public entry point
+// --------------------------------------------------------------------------
+
+export async function analyzeViralMoments(input: AnalyzeInput): Promise<AnalysisResult> {
+  const provider = resolveProvider();
+  const model = resolveModel(provider);
+  const userPrompt = buildUserPrompt(input);
+
+  const rawText =
+    provider === "gemini"
+      ? await callGemini(model, SYSTEM_PROMPT, userPrompt)
+      : await callClaude(model, SYSTEM_PROMPT, userPrompt);
+
+  const moments = parseMomentsJson(rawText, input.metadata.lengthSeconds);
+
+  return {
+    moments,
+    usedHeatmap: (input.heatmapPeaks?.length ?? 0) > 0,
+    usedTranscript: Boolean(input.annotatedTranscript),
+    provider,
+    model,
+  };
+}
+
+// --------------------------------------------------------------------------
+// Providers
+// --------------------------------------------------------------------------
+
+async function callGemini(
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "GEMINI_API_KEY is not set. Add it to your environment or switch AI_PROVIDER to 'claude'.",
+    );
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model,
+    contents: userPrompt,
+    config: {
+      systemInstruction: systemPrompt,
+      temperature: 0.4,
+      responseMimeType: "application/json",
+    },
+  });
+
+  const text = response.text;
+  if (!text) {
+    throw new Error("Gemini returned an empty response.");
+  }
+  return text;
+}
+
+async function callClaude(
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "ANTHROPIC_API_KEY is not set. Add it to your environment or switch AI_PROVIDER to 'gemini'.",
+    );
+  }
+
+  const client = new Anthropic({ apiKey });
+  const response = await client.messages.create({
+    model,
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("Claude returned no text content.");
+  }
+  return textBlock.text;
+}
+
+// --------------------------------------------------------------------------
+// JSON parsing
+// --------------------------------------------------------------------------
+
 function parseMomentsJson(raw: string, videoLength: number): ViralMoment[] {
-  // Strip accidental code fences if Claude added them despite the instructions.
+  // Strip accidental code fences if the model added them despite instructions.
   let cleaned = raw.trim();
   if (cleaned.startsWith("```")) {
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   }
 
-  // Grab the first JSON object in case the model added any stray text.
+  // Grab the first balanced JSON object in case there's stray text around it.
   const firstBrace = cleaned.indexOf("{");
   const lastBrace = cleaned.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace !== -1) {
@@ -189,13 +272,13 @@ function parseMomentsJson(raw: string, videoLength: number): ViralMoment[] {
     parsed = JSON.parse(cleaned);
   } catch (err) {
     throw new Error(
-      `Claude returned non-JSON output: ${(err as Error).message}\n${raw.slice(0, 400)}`,
+      `Model returned non-JSON output: ${(err as Error).message}\n${raw.slice(0, 400)}`,
     );
   }
 
   const list = (parsed as { moments?: unknown })?.moments;
   if (!Array.isArray(list)) {
-    throw new Error("Claude response did not contain a 'moments' array.");
+    throw new Error("Model response did not contain a 'moments' array.");
   }
 
   const result: ViralMoment[] = [];

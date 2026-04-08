@@ -30,6 +30,7 @@ type AnalyzeResponse = {
   usedHeatmap: boolean;
   usedTranscript: boolean;
   transcriptAvailable: boolean;
+  provider: "gemini" | "claude";
   model: string;
 };
 
@@ -120,7 +121,7 @@ export default function Home() {
 }
 
 function Results({ data }: { data: AnalyzeResponse }) {
-  const { metadata, moments, usedHeatmap, transcriptAvailable, model } = data;
+  const { metadata, moments, usedHeatmap, transcriptAvailable, provider, model } = data;
 
   return (
     <section className="flex flex-col gap-6">
@@ -141,7 +142,7 @@ function Results({ data }: { data: AnalyzeResponse }) {
             <Badge active={transcriptAvailable}>Transcript</Badge>
             <Badge active>Metadata</Badge>
             <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              {model}
+              {provider} · {model}
             </span>
           </div>
         </div>

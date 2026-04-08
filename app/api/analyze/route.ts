@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { extractVideoId, fetchVideoData, topHeatmapPeaks } from "@/app/lib/youtube";
 import { buildAnnotatedTranscript, fetchVideoTranscript } from "@/app/lib/transcript";
-import { analyzeViralMoments } from "@/app/lib/claude";
+import { analyzeViralMoments } from "@/app/lib/analyzer";
 
 // The YouTube fetch + Claude call can easily go past the default 10s edge
 // runtime limit, so force Node.js and raise the timeout budget.
@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
       moments: analysis.moments,
       usedHeatmap: analysis.usedHeatmap,
       usedTranscript: analysis.usedTranscript,
+      provider: analysis.provider,
       model: analysis.model,
     });
   } catch (err) {
