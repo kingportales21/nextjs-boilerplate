@@ -1,12 +1,78 @@
 /**
  * GET /api/debug?v=VIDEO_ID
- * Temporary diagnostic endpoint. Returns the raw InnerTube player response
- * so we can see exactly what YouTube sends back from this server environment.
+ * Diagnostic endpoint. Tries the InnerTube /player endpoint with both the
+ * ANDROID and WEB clients and reports what each returns.
  */
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
+
+const PLAYER_URL =
+  "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
+
+const ANDROID_VERSION = "20.10.38";
+const ANDROID_CLIENT = {
+  clientName: "ANDROID",
+  clientVersion: ANDROID_VERSION,
+  androidSdkVersion: 34,
+  hl: "es",
+  gl: "ES",
+  userAgent: `com.google.android.youtube/${ANDROID_VERSION} (Linux; U; Android 14) gzip`,
+};
+const ANDROID_USER_AGENT = `com.google.android.youtube/${ANDROID_VERSION} (Linux; U; Android 14)`;
+
+const WEB_CLIENT = {
+  clientName: "WEB",
+  clientVersion: "2.20240801.00.00",
+  hl: "es",
+  gl: "ES",
+};
+
+async function probe(
+  videoId: string,
+  clientName: string,
+  clientCtx: Record<string, unknown>,
+  userAgent: string,
+) {
+  let status = 0;
+  let body: unknown = null;
+  let fetchError: string | null = null;
+
+  try {
+    const res = await fetch(PLAYER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": userAgent,
+      },
+      body: JSON.stringify({ context: { client: clientCtx }, videoId }),
+      cache: "no-store",
+    });
+    status = res.status;
+    const text = await res.text();
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = text.slice(0, 500);
+    }
+  } catch (err) {
+    fetchError = err instanceof Error ? err.message : String(err);
+  }
+
+  const playability = (body as { playabilityStatus?: unknown })
+    ?.playabilityStatus;
+  const title = (body as { videoDetails?: { title?: string } })?.videoDetails
+    ?.title;
+
+  return {
+    client: clientName,
+    httpStatus: status,
+    fetchError,
+    title: title ?? null,
+    playabilityStatus: playability ?? null,
+  };
+}
 
 export async function GET(req: NextRequest) {
   const videoId = req.nextUrl.searchParams.get("v");
@@ -14,56 +80,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Pass ?v=VIDEO_ID" }, { status: 400 });
   }
 
-  const url = `https://www.youtube.com/youtubei/v1/player?prettyPrint=false`;
+  const [android, web] = await Promise.all([
+    probe(videoId, "ANDROID", ANDROID_CLIENT, ANDROID_USER_AGENT),
+    probe(videoId, "WEB", WEB_CLIENT, "Mozilla/5.0"),
+  ]);
 
-  let status = 0;
-  let body: unknown = null;
-  let fetchError: string | null = null;
-
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-YouTube-Client-Name": "1",
-        "X-YouTube-Client-Version": "2.20240801.00.00",
-        Origin: "https://www.youtube.com",
-        Referer: `https://www.youtube.com/watch?v=${videoId}`,
-      },
-      body: JSON.stringify({
-        context: {
-          client: {
-            clientName: "WEB",
-            clientVersion: "2.20240801.00.00",
-            hl: "es",
-            gl: "ES",
-          },
-        },
-        videoId,
-      }),
-      cache: "no-store",
-    });
-
-    status = res.status;
-    const text = await res.text();
-    try {
-      body = JSON.parse(text);
-    } catch {
-      body = text.slice(0, 2000);
-    }
-  } catch (err) {
-    fetchError = err instanceof Error ? err.message : String(err);
-  }
-
-  return NextResponse.json({
-    videoId,
-    httpStatus: status,
-    fetchError,
-    // Only surface the fields we care about to keep the response readable
-    hasVideoDetails: Boolean((body as Record<string, unknown>)?.videoDetails),
-    title: (body as { videoDetails?: { title?: string } })?.videoDetails?.title ?? null,
-    playabilityStatus: (body as { playabilityStatus?: unknown })?.playabilityStatus ?? null,
-    // Full response truncated to first 3000 chars for inspection
-    rawSnippet: JSON.stringify(body).slice(0, 3000),
-  });
+  return NextResponse.json({ videoId, results: [android, web] });
 }
