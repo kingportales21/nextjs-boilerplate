@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2.882 km</title>
+  <meta name="description" content="Cada segundo que pasa es uno menos sin ti.">
+
+  <!-- Google Fonts: Cormorant Garamond (nórdica, elegante) + Inter (minimalista) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@200;300;400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0c;
+      color: #e8e4df;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ============================================
+       CANVAS DE PARTÍCULAS (fondo estrellado)
+       ============================================ */
+    #particles-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ============================================
+       AURORA BOREAL (gradiente animado sutil)
+       ============================================ */
+    .aurora {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.15;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(72, 160, 220, 0.4) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 30%, rgba(100, 200, 180, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(130, 100, 200, 0.2) 0%, transparent 50%);
+      animation: auroraShift 20s ease-in-out infinite alternate;
+      transition: opacity 3s ease;
+    }
+
+    /* Cuando faltan < 24h: tonos cálidos (fuego / España) */
+    .aurora.warm {
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(220, 120, 60, 0.4) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 30%, rgba(200, 80, 80, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(180, 100, 50, 0.2) 0%, transparent 50%);
+      opacity: 0.25;
+    }
+
+    @keyframes auroraShift {
+      0%   { transform: scale(1) translate(0, 0); }
+      33%  { transform: scale(1.1) translate(-2%, 1%); }
+      66%  { transform: scale(0.95) translate(2%, -1%); }
+      100% { transform: scale(1.05) translate(-1%, 2%); }
+    }
+
+    /* ============================================
+       PANTALLA INTRO
+       ============================================ */
+    #intro-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a0c;
+      transition: opacity 1.5s ease, visibility 1.5s ease;
+    }
+
+    #intro-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .intro-line {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(1.4rem, 5vw, 2rem);
+      text-align: center;
+      line-height: 1.6;
+      padding: 0 1.5rem;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 2s ease, transform 2s ease;
+      letter-spacing: 0.02em;
+    }
+
+    .intro-line.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .intro-line.fade-out {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    /* ============================================
+       PANTALLA PRINCIPAL
+       ============================================ */
+    #main-screen {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    #main-screen.visible {
+      opacity: 1;
+    }
+
+    /* ============================================
+       CUENTA ATRÁS
+       ============================================ */
+    .countdown-container {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .countdown-label {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(1rem, 3vw, 1.1rem);
+      color: rgba(232, 228, 223, 0.6);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    .countdown-units {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(1rem, 4vw, 3rem);
+    }
+
+    .countdown-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .countdown-value {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(3rem, 12vw, 5.5rem);
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: #e8e4df;
+      min-width: 2ch;
+    }
+
+    .countdown-unit-label {
+      font-family: 'Inter', sans-serif;
+      font-weight: 200;
+      font-size: clamp(0.65rem, 2vw, 0.75rem);
+      color: rgba(232, 228, 223, 0.5);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 0.5rem;
+    }
+
+    .countdown-separator {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(1.5rem, 6vw, 3rem);
+      color: rgba(232, 228, 223, 0.2);
+      align-self: flex-start;
+      margin-top: 0.3rem;
+    }
+
+    /* ============================================
+       MENSAJES BAJO EL CONTADOR
+       ============================================ */
+    .sub-message {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(1.05rem, 3vw, 1.15rem);
+      color: rgba(232, 228, 223, 0.6);
+      text-align: center;
+      margin-top: 0.8rem;
+      letter-spacing: 0.01em;
+      padding: 0 1rem;
+    }
+
+    /* Mensaje de < 7 días */
+    .week-message {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: clamp(1rem, 2.5vw, 1.05rem);
+      color: rgba(232, 228, 223, 0.7);
+      text-align: center;
+      margin-top: 1.5rem;
+      opacity: 0;
+      transition: opacity 2s ease;
+      max-width: 500px;
+      padding: 0 1rem;
+    }
+
+    .week-message.visible {
+      opacity: 1;
+    }
+
+    /* ============================================
+       CORAZÓN CON LATIDO
+       ============================================ */
+    .heartbeat {
+      margin-top: 2rem;
+      font-size: 1rem;
+      opacity: 0.35;
+      animation: heartPulse 2s ease-in-out infinite;
+      user-select: none;
+    }
+
+    @keyframes heartPulse {
+      0%, 100% { transform: scale(1); opacity: 0.35; }
+      15%      { transform: scale(1.15); opacity: 0.6; }
+      30%      { transform: scale(1); opacity: 0.35; }
+      45%      { transform: scale(1.1); opacity: 0.5; }
+      60%      { transform: scale(1); opacity: 0.35; }
+    }
+
+    /* ============================================
+       BOTÓN INTERACTIVO
+       ============================================ */
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      margin-top: 2rem;
+    }
+
+    .action-btn {
+      padding: 1rem 2rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: clamp(0.85rem, 2.2vw, 0.9rem);
+      color: rgba(232, 228, 223, 0.7);
+      background: transparent;
+      border: 1px solid rgba(232, 228, 223, 0.2);
+      border-radius: 50px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.5s ease;
+      min-width: 280px;
+      width: 90%;
+      max-width: 340px;
+    }
+
+    .action-btn:hover {
+      color: rgba(232, 228, 223, 0.9);
+      border-color: rgba(232, 228, 223, 0.35);
+      box-shadow: 0 0 30px rgba(232, 228, 223, 0.05);
+    }
+
+    .action-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* ============================================
+       OVERLAY
+       ============================================ */
+    .overlay-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 200;
+      background: rgba(8, 8, 10, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+
+    .overlay-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .overlay-content {
+      max-width: 520px;
+      width: 90%;
+      padding: 3rem 2rem;
+      text-align: center;
+      transform: scale(0.95) translateY(10px);
+      transition: transform 0.8s ease;
+    }
+
+    .overlay-backdrop.active .overlay-content {
+      transform: scale(1) translateY(0);
+    }
+
+    .overlay-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(1.25rem, 4.5vw, 1.5rem);
+      line-height: 2;
+      color: rgba(232, 228, 223, 0.95);
+      letter-spacing: 0.01em;
+    }
+
+    .overlay-close {
+      margin-top: 2.5rem;
+      padding: 0.9rem 2.5rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 0.85rem;
+      color: rgba(232, 228, 223, 0.55);
+      background: transparent;
+      border: 1px solid rgba(232, 228, 223, 0.15);
+      border-radius: 50px;
+      cursor: pointer;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: all 0.4s ease;
+    }
+
+    .overlay-close:hover {
+      color: rgba(232, 228, 223, 0.7);
+      border-color: rgba(232, 228, 223, 0.25);
+    }
+
+    /* ============================================
+       PANTALLA FINAL (contador en cero)
+       ============================================ */
+    #final-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 300;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 3s ease, visibility 3s ease;
+    }
+
+    #final-screen.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .final-main {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: clamp(2.5rem, 10vw, 5rem);
+      color: #0a0a0c;
+      letter-spacing: -0.02em;
+    }
+
+    .final-sub {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(1rem, 3vw, 1.4rem);
+      color: #0a0a0c;
+      margin-top: 1.5rem;
+      opacity: 0;
+      transition: opacity 2s ease 1.5s;
+    }
+
+    #final-screen.active .final-sub {
+      opacity: 1;
+    }
+
+    /* ============================================
+       RESPONSIVE AJUSTES FINOS
+       ============================================ */
+    @media (max-width: 480px) {
+      #main-screen {
+        padding: 1.5rem 1rem;
+        justify-content: center;
+      }
+
+      .countdown-container {
+        margin-bottom: 1.2rem;
+      }
+
+      .countdown-units {
+        gap: 0.5rem;
+      }
+
+      .countdown-value {
+        font-size: 2.8rem;
+      }
+
+      .countdown-unit-label {
+        font-size: 0.6rem;
+      }
+
+      .countdown-separator {
+        font-size: 1.2rem;
+        margin-top: 0.4rem;
+      }
+
+      .countdown-label {
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+      }
+
+      .sub-message {
+        font-size: 1rem;
+      }
+
+      .action-buttons {
+        margin-top: 1.2rem;
+        gap: 0.6rem;
+        width: 100%;
+        align-items: center;
+      }
+
+      .action-btn {
+        font-size: 0.82rem;
+        padding: 0.9rem 1.5rem;
+        width: 95%;
+        min-width: unset;
+      }
+
+      .heartbeat {
+        margin-top: 1rem;
+      }
+
+      .overlay-backdrop {
+        align-items: flex-start;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .overlay-content {
+        padding: 2rem 1.5rem;
+        margin: 2rem 0;
+      }
+
+      .overlay-text {
+        font-size: 1.2rem;
+        line-height: 1.9;
+      }
+
+      .overlay-close {
+        font-size: 0.8rem;
+        padding: 0.85rem 2rem;
+      }
+    }
+
+    /* Pantallas muy pequeñas (iPhone SE, etc) */
+    @media (max-width: 375px) {
+      .countdown-value {
+        font-size: 2.4rem;
+      }
+
+      .action-btn {
+        font-size: 0.78rem;
+        padding: 0.85rem 1.2rem;
+      }
+    }
+
+    @media (max-height: 600px) {
+      .heartbeat {
+        margin-top: 0.8rem;
+      }
+      .countdown-container {
+        margin-bottom: 0.8rem;
+      }
+      .action-buttons {
+        margin-top: 1rem;
+        gap: 0.5rem;
+      }
+    }
+
+    /* Pantallas muy altas (tablets en vertical) */
+    @media (min-height: 800px) and (max-width: 480px) {
+      .countdown-value {
+        font-size: 3.2rem;
+      }
+      .action-btn {
+        font-size: 0.9rem;
+        padding: 1.1rem 2rem;
+      }
+      .sub-message {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Canvas para partículas / estrellas -->
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- Aurora boreal animada -->
+  <div class="aurora" id="aurora"></div>
+
+  <!-- ============================================
+       PANTALLA INTRO
+       ============================================ -->
+  <div id="intro-screen">
+    <p class="intro-line" id="intro-line-1">Cada vez falta menos para ver a la mujer de mi vida,</p>
+    <p class="intro-line" id="intro-line-2" style="margin-top: 1rem;">a mi futura esposa.</p>
+  </div>
+
+  <!-- ============================================
+       PANTALLA PRINCIPAL
+       ============================================ -->
+  <div id="main-screen">
+    <div class="countdown-container">
+      <div class="countdown-label">Nos volvemos a ver en</div>
+
+      <div class="countdown-units">
+        <div class="countdown-unit">
+          <span class="countdown-value" id="days">--</span>
+          <span class="countdown-unit-label">Días</span>
+        </div>
+        <span class="countdown-separator">:</span>
+        <div class="countdown-unit">
+          <span class="countdown-value" id="hours">--</span>
+          <span class="countdown-unit-label">Horas</span>
+        </div>
+        <span class="countdown-separator">:</span>
+        <div class="countdown-unit">
+          <span class="countdown-value" id="minutes">--</span>
+          <span class="countdown-unit-label">Minutos</span>
+        </div>
+        <span class="countdown-separator">:</span>
+        <div class="countdown-unit">
+          <span class="countdown-value" id="seconds">--</span>
+          <span class="countdown-unit-label">Segundos</span>
+        </div>
+      </div>
+
+      <p class="sub-message">Cada segundo que pasa es uno menos sin ti.</p>
+
+      <div class="week-message" id="week-message">
+        La próxima vez que nos abracemos… ya no será un sueño.
+      </div>
+    </div>
+
+    <!-- Corazón con latido -->
+    <div class="heartbeat" aria-hidden="true">&#10084;</div>
+
+    <!-- Botones interactivos -->
+    <div class="action-buttons">
+      <button class="action-btn" data-overlay="miss">Ábrela cuando me eches de menos</button>
+      <button class="action-btn" data-overlay="bad-day">Ábrela cuando tengas un mal día</button>
+      <button class="action-btn" data-overlay="doubt">Ábrela cuando dudes</button>
+    </div>
+  </div>
+
+  <!-- ============================================
+       OVERLAY CON MENSAJE ROMÁNTICO
+       ============================================ -->
+  <div class="overlay-backdrop" id="overlay">
+    <div class="overlay-content">
+      <p class="overlay-text" id="overlay-text"></p>
+      <button class="overlay-close" id="close-overlay">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- ============================================
+       PANTALLA FINAL
+       ============================================ -->
+  <div id="final-screen">
+    <p class="final-main">Corre.</p>
+    <p class="final-sub">Ya estoy ahí. &#10084;&#65039;</p>
+  </div>
+
+  <script>
+    /* ============================================
+       CORAZÓN DE PARTÍCULAS INTERACTIVO
+       ============================================ */
+    (function initHeartParticles() {
+      var canvas = document.getElementById('particles-canvas');
+      var ctx = canvas.getContext('2d');
+      var width, height;
+      var particles = [];
+      var animationId;
+      var mouse = { x: -1000, y: -1000 };
+      var isMobile = window.innerWidth <= 600;
+      var PARTICLE_COUNT = isMobile ? 300 : 700;
+      var TRAIL_OPACITY = 0.08;
+      var time = 0;
+
+      // Fórmula paramétrica del corazón
+      function heartX(t) {
+        return 16 * Math.pow(Math.sin(t), 3);
+      }
+      function heartY(t) {
+        return -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+      }
+
+      // Colores rosa/rojo/púrpura
+      var colors = ['#f472b6', '#fb7185', '#e879f9', '#a78bfa', '#f9a8d4', '#c084fc', '#fb923c'];
+
+      function Particle() {
+        this.init(true);
+      }
+
+      Particle.prototype.init = function(firstTime) {
+        // Ángulo aleatorio en el corazón
+        this.t = Math.random() * Math.PI * 2;
+        // Escala del corazón adaptada a pantalla
+        var scale = Math.min(width, height) * (isMobile ? 0.022 : 0.025);
+        // Posición objetivo en el corazón
+        this.targetX = width / 2 + heartX(this.t) * scale;
+        this.targetY = height / 2 + heartY(this.t) * scale - (isMobile ? 20 : 40);
+
+        if (firstTime) {
+          // Posición inicial aleatoria (aparecen desde fuera)
+          var angle = Math.random() * Math.PI * 2;
+          var dist = Math.max(width, height) * 0.6;
+          this.x = width / 2 + Math.cos(angle) * dist;
+          this.y = height / 2 + Math.sin(angle) * dist;
+        }
+
+        this.age = 0;
+        this.life = Math.random() * 400 + 200;
+        // Variación sutil para que no sea rígido
+        this.offset = (Math.random() - 0.5) * scale * 0.6;
+        this.offsetY = (Math.random() - 0.5) * scale * 0.6;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.size = Math.random() * 1.5 + 0.8;
+        this.speed = Math.random() * 0.02 + 0.015;
+        this.floatPhase = Math.random() * Math.PI * 2;
+        this.floatSpeed = Math.random() * 0.01 + 0.005;
+        this.floatRadius = Math.random() * 3 + 1;
+      };
+
+      Particle.prototype.update = function() {
+        // Floating suave
+        this.floatPhase += this.floatSpeed;
+        var floatX = Math.cos(this.floatPhase) * this.floatRadius;
+        var floatY = Math.sin(this.floatPhase * 0.7) * this.floatRadius;
+
+        // Pulso del corazón (latido)
+        var beat = 1 + Math.sin(time * 0.03) * 0.03;
+        var scale = Math.min(width, height) * (isMobile ? 0.022 : 0.025);
+        var tx = width / 2 + heartX(this.t) * scale * beat + this.offset + floatX;
+        var ty = height / 2 + heartY(this.t) * scale * beat - (isMobile ? 20 : 40) + this.offsetY + floatY;
+
+        // Repulsión del mouse/dedo
+        var mdx = mouse.x - this.x;
+        var mdy = mouse.y - this.y;
+        var mDist = Math.sqrt(mdx * mdx + mdy * mdy);
+        var repelRadius = isMobile ? 80 : 120;
+        var repelX = 0, repelY = 0;
+
+        if (mDist < repelRadius && mDist > 0) {
+          var force = (repelRadius - mDist) / repelRadius;
+          repelX = -(mdx / mDist) * force * 60;
+          repelY = -(mdy / mDist) * force * 60;
+        }
+
+        // Mover hacia objetivo con easing
+        this.x += (tx + repelX - this.x) * this.speed;
+        this.y += (ty + repelY - this.y) * this.speed;
+
+        this.age++;
+        if (this.age > this.life) {
+          this.init(false);
+        }
+      };
+
+      Particle.prototype.draw = function(context) {
+        var alpha;
+        if (this.age < 60) {
+          alpha = this.age / 60;
+        } else if (this.age > this.life - 60) {
+          alpha = (this.life - this.age) / 60;
+        } else {
+          alpha = 0.7 + Math.sin(this.floatPhase) * 0.3;
+        }
+        context.globalAlpha = Math.max(0, Math.min(1, alpha));
+        context.fillStyle = this.color;
+        context.beginPath();
+        context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        context.fill();
+      };
+
+      function init() {
+        var dpr = window.devicePixelRatio || 1;
+        width = window.innerWidth;
+        height = window.innerHeight;
+        isMobile = width <= 600;
+        PARTICLE_COUNT = isMobile ? 300 : 700;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+
+        particles = [];
+        for (var i = 0; i < PARTICLE_COUNT; i++) {
+          particles.push(new Particle());
+        }
+      }
+
+      function animate() {
+        time++;
+        ctx.fillStyle = 'rgba(10, 10, 12, ' + TRAIL_OPACITY + ')';
+        ctx.fillRect(0, 0, width, height);
+
+        for (var i = 0; i < particles.length; i++) {
+          particles[i].update();
+          particles[i].draw(ctx);
+        }
+        ctx.globalAlpha = 1;
+        animationId = requestAnimationFrame(animate);
+      }
+
+      window.addEventListener('resize', function() {
+        init();
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+
+      document.addEventListener('mouseleave', function() {
+        mouse.x = -1000;
+        mouse.y = -1000;
+      });
+
+      document.addEventListener('touchmove', function(e) {
+        mouse.x = e.touches[0].clientX;
+        mouse.y = e.touches[0].clientY;
+      });
+
+      document.addEventListener('touchend', function() {
+        mouse.x = -1000;
+        mouse.y = -1000;
+      });
+
+      init();
+      animate();
+    })();
+
+    /* ============================================
+       SECUENCIA DE INTRO
+       ============================================ */
+    (function introSequence() {
+      var line1 = document.getElementById('intro-line-1');
+      var line2 = document.getElementById('intro-line-2');
+      var introScreen = document.getElementById('intro-screen');
+      var mainScreen = document.getElementById('main-screen');
+
+      // Línea 1: aparece tras 0.8s
+      setTimeout(function() {
+        line1.classList.add('visible');
+      }, 800);
+
+      // Línea 2: aparece tras 3.5s (0.8 + fade + pausa de 2s)
+      setTimeout(function() {
+        line2.classList.add('visible');
+      }, 3500);
+
+      // Ambas líneas hacen fade-out tras 7s
+      setTimeout(function() {
+        line1.classList.add('fade-out');
+        line2.classList.add('fade-out');
+      }, 7000);
+
+      // Intro desaparece y main aparece tras 8.5s
+      setTimeout(function() {
+        introScreen.classList.add('hidden');
+        mainScreen.classList.add('visible');
+      }, 8500);
+    })();
+
+    /* ============================================
+       CUENTA ATRÁS
+       ============================================ */
+    (function countdown() {
+      var targetDate = new Date('2026-03-19T00:00:00');
+      var daysEl = document.getElementById('days');
+      var hoursEl = document.getElementById('hours');
+      var minutesEl = document.getElementById('minutes');
+      var secondsEl = document.getElementById('seconds');
+      var weekMessage = document.getElementById('week-message');
+      var aurora = document.getElementById('aurora');
+      var finalScreen = document.getElementById('final-screen');
+      var finalShown = false;
+
+      function pad(n) {
+        return n < 10 ? '0' + n : String(n);
+      }
+
+      function update() {
+        var now = new Date();
+        var diff = targetDate.getTime() - now.getTime();
+
+        // Contador llegó a cero
+        if (diff <= 0) {
+          daysEl.textContent = '00';
+          hoursEl.textContent = '00';
+          minutesEl.textContent = '00';
+          secondsEl.textContent = '00';
+
+          if (!finalShown) {
+            finalShown = true;
+            finalScreen.classList.add('active');
+          }
+          return;
+        }
+
+        var totalSeconds = Math.floor(diff / 1000);
+        var d = Math.floor(totalSeconds / 86400);
+        var h = Math.floor((totalSeconds % 86400) / 3600);
+        var m = Math.floor((totalSeconds % 3600) / 60);
+        var s = totalSeconds % 60;
+
+        daysEl.textContent = pad(d);
+        hoursEl.textContent = pad(h);
+        minutesEl.textContent = pad(m);
+        secondsEl.textContent = pad(s);
+
+        // Menos de 7 días: mostrar mensaje especial
+        var sevenDays = 7 * 24 * 60 * 60 * 1000;
+        if (diff < sevenDays) {
+          weekMessage.classList.add('visible');
+        }
+
+        // Menos de 24 horas: aurora cálida
+        var oneDay = 24 * 60 * 60 * 1000;
+        if (diff < oneDay) {
+          aurora.classList.add('warm');
+        }
+      }
+
+      update();
+      setInterval(update, 1000);
+    })();
+
+    /* ============================================
+       OVERLAY
+       ============================================ */
+    (function overlay() {
+      var buttons = document.querySelectorAll('.action-btn[data-overlay]');
+      var closeBtn = document.getElementById('close-overlay');
+      var backdrop = document.getElementById('overlay');
+      var overlayText = document.getElementById('overlay-text');
+
+      var messages = {
+        'miss': [
+          'Cierra los ojos.<br><br>Respira.<br><br>Escucha tu corazón, el mío suena igual.<br><br>No estás sola. Nunca lo estás y nunca lo estarás porque te lo prometí.<br><br>Te amo mujeer de mi vida',
+          'Ahora mismo, en algún lugar a 2.882 km de ti, alguien está mirando el cualquier cosa y pensando en ti.<br><br>Ese alguien soy yo y siieeeempre soy yo.',
+          '¿Sabes qué hago cuando te echo de menos?<br><br>Respiro hondo y recuerdo que cada segundo que pasa es uno menos para volver a abrazarte.<br><br>Y eso lo cambia todo.',
+          'Si pudieras sentir lo que siento ahora mismo, no te cabrían dudas de lo mucho que te echo de menos.<br><br>Pero tranquila.<br><br>Pronto no habrá distancia. Solo tú y yo.',
+          'Echo de menos tu risa, echo de menos tu cuerpo, tu voz, echo de menos todo.<br><br>Pero lo que más echo de menos es no poder decirte al oído: Eres el amooor de mi vida',
+          'A veces miro la hora y calculo qué estarás haciendo.<br><br>Y me quedo tranquilo solo con imaginarte.<br><br>Porque solo con saber que eres mi novia "aunque lejos", ya es suficiente para que mi día tenga sentido.',
+          'No es fácil amarte desde lejos, pero es imposible no hacerlo.<br><br>Así que aquí sigo, echándote de menos con todas mis fuerzas yyy amándote cada vez más.',
+          'Hoy desperté y lo primero que pensé fue en ti.<br><br>Y lo segundo. Y lo tercero.<br><br>Básicamente toooodo el día pienso en ti',
+          'Me gustaría poder teletransportarme.<br><br>Solo cinco minutos. Para abrazarte, besarte y decirte al oído que todo va a estar bien.<br><br>Mientras tanto, te abrazo desde aquí. Con todo mi alma mi princesa bonita.',
+          '¿Sabes lo que más me duele de la distancia?<br><br>No es no verte, es no poder estar ahí cuando me necesitas, pero aunque no esté físicamente "porque hace mucho frio", mi corazón siempre está contigo y lo sabes de sobra eh.',
+          'Cada canción me recuerda a ti.<br><br>Cada atardecer tiene tu nombre.<br><br>Y cada noche, antes de dormir, te mando un beso que cruza los 2.882 km hasta llegar a ti.',
+          'Hay personas que dicen que la distancia mata el amor.<br><br>No conocen el nuestro.<br><br>Porque cada día que pasa te quiero un poco más. Y te echo de menos un poco más también.',
+          'Me encantaría poder agarrarte la mano ahora mismo.<br><br>Caminar sin rumbo. En silencio. Solo sintiéndote cerca.<br><br>Pronto. Te lo prometo.',
+          'Estoy contando los días.<br><br>Las horas.<br><br>Los minutos.<br><br>Porque cada uno que pasa es uno menos para volver a verte. Y eso me da fuerzas para seguir.',
+          'A veces me atrapo sonriendo solo.<br><br>Y es porque me acuerdo de algo que dijiste, de cómo te ríes, de cómo me miras.<br><br>Me haces falta. Pero me haces feliz incluso desde lejos.',
+          'Ojalá pudieras ver lo que veo cuando cierro los ojos.<br><br>Tu cara. Tu sonrisa. Nosotros.<br><br>Es la película más bonita que he visto. Y la pongo en repeat cada noche.',
+          'Dicen que el hogar no es un lugar, sino una persona.<br><br>Tú eres mi hogar.<br><br>Y estoy a 2.882 km de casa. Pero volveré. Siempre volveré a ti.',
+          'Esta distancia me ha enseñado algo:<br><br>Que te quiero de una forma que no cabe en kilómetros.<br><br>Que no se mide en horas de vuelo.<br><br>Que simplemente… es.',
+          'Hoy me hiciste falta más que nunca.<br><br>No por algo en concreto. Solo porque sí.<br><br>Porque hay días en que te necesito cerca y punto. Y hoy es uno de esos días.',
+          'Si cada vez que pienso en ti se encendiera una estrella, el cielo entero brillaría solo por nosotros.<br><br>Y sería el cielo más bonito del mundo.',
+          'Me pregunto si sientes lo mismo que yo cuando miras el cielo por la noche.<br><br>Esa mezcla de nostalgia y esperanza.<br><br>Porque sé que el mismo cielo nos cubre a los dos. Y eso me conecta contigo.',
+          'No hay wifi que alcance, ni pantalla que baste, ni mensaje que reemplace el sentirte cerca.<br><br>Pero mientras llega ese día, cada palabra que te escribo lleva un pedazo de mí.',
+          'Echarte de menos se ha convertido en mi segunda respiración.<br><br>Automático. Constante. Inevitable.<br><br>Pero lejos de doler, me recuerda lo mucho que vales en mi vida.',
+          'Si tuviera un deseo, no pediría riquezas ni fama.<br><br>Pediría despertar mañana a tu lado.<br><br>Eso es todo. Solo eso. Solo tú.',
+          'A veces siento que la distancia es un monstruo enorme.<br><br>Pero luego escucho tu voz, veo tu foto, leo tu mensaje… y el monstruo se hace pequeñito.<br><br>Tú me das más fuerza de la que imaginas.',
+          'Hoy caminé por la calle y vi a una pareja abrazándose.<br><br>Y pensé: pronto seremos nosotros.<br><br>Pronto no habrá despedidas en aeropuertos. Solo buenos días con besos de verdad.',
+          'Lo más difícil no es la distancia.<br><br>Lo más difícil es no poder consolarte cuando estás triste, no poder hacerte reír cuando lo necesitas.<br><br>Pero eso no significa que no lo intente. Desde aquí, con todo lo que tengo.',
+          'Cada vez que alguien me pregunta por qué sonrío tanto, les digo que es por alguien que está lejos.<br><br>Y no entienden cómo alguien lejos puede hacerme tan feliz.<br><br>Es que no te conocen a ti.',
+          'Me faltan tus abrazos de esos que no quieres soltar.<br><br>De esos que dicen todo sin hablar.<br><br>De esos que convierten cualquier mal día en el mejor del mundo.<br><br>Me faltas tú.',
+          'No sé cómo explicarlo, pero hay algo en el aire que hoy me conecta más contigo.<br><br>Como si el universo supiera que te echo de menos.<br><br>Y me estuviera diciendo: tranquilo, ya falta menos.'
+        ],
+        'bad-day': [
+          'Amor, no tienes que ser fuerte todo el tiempo.<br><br>Hoy fue un mal día, no una mala vida.<br><br>Y aunque no pueda abrazarte ahora mismo, quiero que sepas que eres lo más bonito que me ha pasado.<br><br>Mañana saldrá el sol. Y si no sale porque es Islandia jajajaj yo seré tu sool.',
+          'Si pudiera, cruzaría esos 2.882 km ahora mismo solo para sentarme a tu lado y decirte:<br><br>no pasa nada.<br><br>Estoy contigo. Aunque no me veas, estoy contigo.',
+          'Los días malos son solo eso: días, pasan.<br><br>Siempre pasan lo que no pasa es lo que siento por ti. Eso se queda para siempre.',
+          'Hoy el mundo fue duro contigo.<br><br>Pero el mundo no sabe lo increíble que eres.<br><br>Yo sí lo sé. Y por eso estoy aquí, recordándotelo las veces que haga falta.',
+          'No necesitas tener todo bajo control.<br><br>No necesitas sonreír si no te sale.<br><br>Solo necesitas saber que pase lo que pase, al otro lado de la distancia hay alguien que te quiere exactamente como eres. Hoy y siempre.',
+          'Ojalá pudiera quitarte todo lo malo de encima.<br><br>Ojalá mis brazos llegaran hasta ahí.<br><br>Pero mientras tanto, quédate con esto: eres más fuerte de lo que crees, más valiosa de lo que imaginas, y más querida de lo que sabes.',
+          'Un mal día no define quién eres.<br><br>Tú eres la persona que me hace sonreír sin motivo, que me calma con solo existir.<br><br>Así que respira. Mañana será mejor. Y si no, yo estaré aquí también.',
+          'Sé que hoy todo se siente pesado.<br><br>Sé que quisieras desaparecer un rato.<br><br>Pero no desaparezcas. Porque este mundo es mejor contigo. Mi mundo es mejor contigo.',
+          'Quiero que te mires al espejo y veas lo que yo veo:<br><br>Una mujer valiente. Que sigue de pie aunque el día le pese. Que sigue luchando aunque nadie la vea.<br><br>Esa eres tú. Y estoy orgulloso de ti.',
+          'No tienes que explicarme por qué fue un mal día.<br><br>No necesito detalles.<br><br>Solo necesito que sepas que estoy aquí. Para lo que sea. Sin condiciones. Sin juicio. Solo amor.',
+          'A veces la vida aprieta.<br><br>Pero nunca aprieta más fuerte de lo que tú puedes soportar.<br><br>Y si sientes que no puedes más, apóyate en mí. Para eso estoy. Para eso estamos.',
+          'Ojalá pudiera meterme en tu día y reorganizarlo todo.<br><br>Quitar lo feo, dejar lo bonito, y añadir un abrazo enorme al final.<br><br>Mientras tanto, este mensaje es ese abrazo. Aprieto fuerte.',
+          'Llora si necesitas llorar.<br><br>Grita si necesitas gritar.<br><br>Pero después de todo eso, recuerda: hay alguien a 2.882 km que daría lo que fuera por verte sonreír de nuevo.',
+          'Los días malos enseñan algo importante:<br><br>Que los buenos días son un regalo. Y que tú mereces muchos más de los buenos que de los malos.<br><br>Mañana será uno de los buenos. Lo sé.',
+          'Eres humana.<br><br>Tienes derecho a cansarte, a frustrarte, a querer mandar todo al diablo.<br><br>Pero no te rindas. Porque al otro lado de este día gris te espera algo bonito. Y yo quiero estar ahí cuando lo veas.',
+          'Piensa en todo lo que ya has superado.<br><br>Los exámenes. Los miedos. La distancia. Los malos momentos.<br><br>Sigues aquí. Sigues de pie. Y eso te hace más fuerte de lo que crees.',
+          'No puedo arreglar tu día.<br><br>Pero puedo recordarte que eres la persona más especial que conozco.<br><br>Y que un mal día no le quita brillo a todo lo que eres.',
+          'Si el mundo te pesa hoy, déjalo en el suelo un rato.<br><br>No tienes que cargarlo todo tú sola.<br><br>Yo cargo contigo. Siempre.',
+          'Sé que la distancia hace que los días malos duelan más.<br><br>Porque no puedo estar ahí. Y eso me frustra.<br><br>Pero quiero que sientas en cada palabra que te escribo todo el amor que no puedo darte en persona. Hoy y todos los días.',
+          'Cuando todo se ponga difícil, cierra los ojos y piensa en nosotros.<br><br>En nuestras risas. En nuestros planes. En lo que viene.<br><br>Eso es más grande que cualquier mal día.',
+          'Hoy necesitas escuchar esto: está bien no estar bien.<br><br>Está bien sentirse perdida.<br><br>Lo que no está bien es creer que estás sola en esto. Porque no lo estás. Me tienes a mí.',
+          'Imagina que estoy ahí contigo.<br><br>Que te agarro la mano sin decir nada.<br><br>Que te abrazo hasta que el mundo deje de pesar tanto.<br><br>Porque es exactamente lo que haría si pudiera.',
+          'Tu mal día no cambia nada entre nosotros.<br><br>Ni tu mal humor. Ni tus lágrimas. Ni tu silencio.<br><br>Estoy aquí en los días bonitos y en los feos. Sobre todo en los feos.',
+          'A veces lo único que necesitas es que alguien te diga: va a pasar.<br><br>Pues aquí estoy yo, diciéndotelo:<br><br>Va a pasar. Te lo prometo. Y cuando pase, vas a ser más fuerte.',
+          'No puedo abrazarte, pero puedo decirte esto:<br><br>Eres suficiente. Tal como eres. Con tus días buenos y tus días malos.<br><br>Y eres lo mejor que me ha pasado.',
+          'Si pudiera pedir un solo poder, sería el de hacerte sonreír cuando más lo necesitas.<br><br>Aunque sea desde lejos. Aunque sea con un mensaje tonto a las 3 de la mañana.<br><br>Tu sonrisa es mi misión.',
+          'Hoy el día fue pesado. Lo sé.<br><br>Pero mañana empieza de cero. Nuevo día, nuevas oportunidades, mismo amor incondicional esperándote al otro lado del teléfono.',
+          'Recuerda algo importante: cada día malo que pasa te acerca un día más a mí.<br><br>Y cuando estemos juntos, voy a compensar cada mal rato con mil momentos bonitos.',
+          'No te juzgo por tener un mal día. No te juzgo por estar cansada. No te juzgo por nada.<br><br>Solo te quiero.<br><br>Así de simple. Así de incondicional.',
+          'Hoy quiero que hagas algo por mí:<br><br>Respira profundo. Suelta todo lo malo. Y quédate solo con esto: alguien al otro lado del mundo te ama con locura.<br><br>Y eso ningún mal día lo puede cambiar.'
+        ],
+        'doubt': [
+          'No dudes.<br><br>No dudes de lo que siento, porque ni la distancia, ni el tiempo, ni los 2.882 kilómetros han podido con esto.<br><br>Te elegí, te elijo y te voy a seguir eligiendo cada día sin excepción.',
+          'Si algún día dudas de esto, recuerda:<br><br>Nadie cruza un océano de distancia por costumbre.<br><br>Nadie cuenta los días para ver a alguien por casualidad.<br><br>Esto es real. Tú y yo somos reales.',
+          '¿Dudas?<br><br>Entonces déjame recordarte algo: cada mensaje, cada llamada, cada "buenas noches" cruzando miles de kilómetros nada de eso es obligación.<br><br>Es decisión.<br><br>Mi decisión. Cada día.',
+          'La distancia puede hacer que todo se sienta frágil.<br><br>Pero lo nuestro no es frágil.<br><br>Lo nuestro es de las cosas que sobreviven. Que resisten. Que valen cada segundo de espera.',
+          'Sé que a veces la cabeza te juega malas pasadas.<br><br>Sé que la distancia pesa.<br><br>Pero quiero que sepas algo: no hay ni un solo momento del día en que no esté seguro de ti.<br><br>De nosotros.',
+          'No estoy contigo por costumbre.<br><br>No estoy contigo por casualidad.<br><br>Estoy contigo porque te elijo.<br><br>Y volvería a elegirte incluso a 2.882 kilómetros. Incluso a más.',
+          'Las dudas son normales. La distancia las alimenta.<br><br>Pero escúchame bien: lo que siento por ti no tiene distancia.<br><br>Es infinito. Es terco. Es mío y es tuyo.<br><br>Y no se va a ir a ningún lado.',
+          'Podrían ofrecerme la vida más fácil del mundo.<br><br>Sin distancia, sin esperas, sin complicaciones.<br><br>Y aún así te elegiría a ti. Porque nada fácil se compara con lo que tú me haces sentir.',
+          'Si esto no fuera real, ya habría terminado hace mucho.<br><br>La distancia se encarga de matar lo que no es fuerte.<br><br>Y aquí seguimos. Más fuertes que nunca.',
+          'Cada vez que dudas, yo me enamoro un poco más.<br><br>Porque eso me da la oportunidad de recordarte lo mucho que vales. Y lo mucho que te quiero.',
+          'No necesito verte todos los días para saber lo que siento.<br><br>No necesito tocarte para saber que eres real.<br><br>Lo sé. Lo siento. Y punto.',
+          'Mira todo lo que hemos pasado juntos.<br><br>La distancia. Las diferencias horarias. Los días difíciles.<br><br>Y aquí estamos. Todavía. Juntos. Eso no es casualidad. Eso es amor del de verdad.',
+          'Si pudiera, te mostraría cómo te veo yo.<br><br>Verías a alguien increíble. Alguien por quien vale la pena esperar. Alguien que me hace querer ser mejor persona cada día.',
+          'No mido mi amor en visitas ni en regalos.<br><br>Lo mido en mensajes de "buenos días" sin falta. En "buenas noches" sin excusa. En "te quiero" sin condiciones.<br><br>Y eso no va a cambiar.',
+          'Puedes dudar del clima, de la gente, del futuro.<br><br>Pero no dudes de mí.<br><br>Soy la cosa más segura que tienes. Y planeo seguir siéndolo.',
+          'A veces miro atrás y pienso en el día que te conocí.<br><br>Y sé que si pudiera volver al inicio, haría exactamente lo mismo.<br><br>Elegiría este camino. Contigo. Siempre contigo.',
+          'La distancia no me aleja de ti.<br><br>Me acerca.<br><br>Porque cada día lejos me hace valorar más cada segundo juntos. Y me hace luchar más fuerte por nosotros.',
+          'No hay nadie más.<br><br>No la hay. No la hubo. No la habrá.<br><br>Solo tú. En mi cabeza, en mi corazón, en mis planes. Solo tú.',
+          'Entiendo que dudes. La distancia es dura y a veces el silencio pesa.<br><br>Pero mi silencio nunca significa ausencia.<br><br>Aunque no diga nada, estoy aquí. Pensando en ti. Siempre.',
+          '¿Quieres pruebas de que esto es real?<br><br>Mira tu teléfono. Mira cuántos mensajes. Mira cuántas llamadas. Mira cuántos "te quiero" a las 3 de la mañana.<br><br>Eso es amor. Del que no se finge.',
+          'Sé que el miedo te dice que esto no puede funcionar.<br><br>Pero el miedo no me conoce a mí.<br><br>Porque yo no me rindo. Y menos contigo.',
+          'Si esto fuera un juego, ya habría dejado de jugar hace mucho.<br><br>Pero esto no es un juego.<br><br>Esto es lo más serio, lo más bonito y lo más real que tengo en la vida.',
+          'Cada promesa que te hago la cumplo. Cada "te quiero" lo siento. Cada plan que hacemos lo imagino de verdad.<br><br>No son palabras vacías. Son certezas.',
+          'Quiero que entiendas algo: no estoy aquí porque sea fácil.<br><br>Estoy aquí porque tú mereces a alguien que se quede.<br><br>Y yo me quedo. Aunque cueste. Aunque duela. Me quedo.',
+          'La distancia me ha enseñado a valorar lo que otros dan por hecho.<br><br>Un abrazo. Un beso. Un "buenos días" en persona.<br><br>Y cuando por fin lo tenga, no lo voy a soltar nunca.',
+          'Si vieras cómo hablo de ti cuando no estás…<br><br>Mis amigos ya están cansados de escucharme.<br><br>Pero no puedo evitarlo. Eres lo mejor que tengo y quiero que todo el mundo lo sepa.',
+          'Mira, hay cosas que simplemente son.<br><br>El cielo es azul. El agua moja. Y yo te quiero.<br><br>No tiene explicación. No necesita justificación. Simplemente es.',
+          'Prefiero mil noches echándote de menos que una sola noche sin saber que existes.<br><br>Porque desde que llegaste, mi vida tiene un sentido que antes no tenía.',
+          'No te pido que nunca dudes.<br><br>Te pido que cuando lo hagas, vengas a mí. Y me dejes recordarte por qué estamos juntos.<br><br>Porque tengo mil razones. Y cada día se me ocurren más.',
+          'Aquí estoy.<br><br>Al otro lado de la pantalla, al otro lado del océano, al otro lado del mundo.<br><br>Pero al mismo lado del amor.<br><br>Siempre del mismo lado. Del tuyo.'
+        ]
+      };
+
+      // Selecciona un mensaje diferente cada día basado en el día del año
+      function getDayOfYear() {
+        var now = new Date();
+        var start = new Date(now.getFullYear(), 0, 0);
+        var diff = now - start;
+        return Math.floor(diff / 86400000);
+      }
+
+      var dayOfYear = getDayOfYear();
+
+      buttons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var key = btn.getAttribute('data-overlay');
+          var pool = messages[key];
+          var index = dayOfYear % pool.length;
+          overlayText.innerHTML = pool[index];
+          backdrop.classList.add('active');
+        });
+      });
+
+      closeBtn.addEventListener('click', function() {
+        backdrop.classList.remove('active');
+      });
+
+      backdrop.addEventListener('click', function(e) {
+        if (e.target === backdrop) {
+          backdrop.classList.remove('active');
+        }
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && backdrop.classList.contains('active')) {
+          backdrop.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
