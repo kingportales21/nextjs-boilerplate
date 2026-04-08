@@ -3,8 +3,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-type Signals = { heatmap: boolean; transcript: boolean; metadata: boolean };
-
 type ViralMoment = {
   startSec: number;
   endSec: number;
@@ -12,25 +10,19 @@ type ViralMoment = {
   description: string;
   score: number;
   reason: string;
-  transcriptExcerpt: string;
-  signals: Signals;
 };
 
 type VideoMetadata = {
   videoId: string;
+  videoUrl: string;
   title: string;
   author: string;
-  lengthSeconds: number;
   thumbnailUrl: string;
 };
 
 type AnalyzeResponse = {
   metadata: VideoMetadata;
   moments: ViralMoment[];
-  usedHeatmap: boolean;
-  usedTranscript: boolean;
-  transcriptAvailable: boolean;
-  provider: "gemini" | "claude";
   model: string;
 };
 
@@ -74,9 +66,9 @@ export default function Home() {
             Encuentra los mejores momentos de un video para cortar Shorts y TikToks
           </h1>
           <p className="max-w-xl text-base text-zinc-600 dark:text-zinc-400">
-            Pega la URL de un video del canal de YouTube. Analizamos el heatmap de{" "}
-            <em>Most Replayed</em>, el transcript y el contexto del video con Claude para
-            devolverte los fragmentos más virales con su timestamp.
+            Pega la URL de un video del canal de Carwow España. Gemini analiza
+            el video completo (imagen, audio y subtítulos) y devuelve los
+            fragmentos más virales con su timestamp.
           </p>
         </header>
 
@@ -109,8 +101,9 @@ export default function Home() {
 
         {loading && !result && (
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-            Descargando heatmap, transcript y pasándoselo a Claude. Puede tardar entre
-            20 y 60 segundos según la longitud del video…
+            Gemini está descargando el video y analizándolo entero (imagen +
+            audio). Puede tardar entre 1 y 4 minutos según la duración del
+            video…
           </div>
         )}
 
@@ -121,7 +114,7 @@ export default function Home() {
 }
 
 function Results({ data }: { data: AnalyzeResponse }) {
-  const { metadata, moments, usedHeatmap, transcriptAvailable, provider, model } = data;
+  const { metadata, moments, model } = data;
 
   return (
     <section className="flex flex-col gap-6">
@@ -129,20 +122,21 @@ function Results({ data }: { data: AnalyzeResponse }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={metadata.thumbnailUrl}
-          alt={metadata.title}
+          alt={metadata.title || metadata.videoId}
           className="h-24 w-40 flex-none rounded-md object-cover"
         />
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold leading-tight">{metadata.title}</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {metadata.author} · {formatTime(metadata.lengthSeconds)}
-          </p>
+          <h2 className="text-lg font-semibold leading-tight">
+            {metadata.title || metadata.videoId}
+          </h2>
+          {metadata.author && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {metadata.author}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            <Badge active={usedHeatmap}>Most Replayed</Badge>
-            <Badge active={transcriptAvailable}>Transcript</Badge>
-            <Badge active>Metadata</Badge>
             <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              {provider} · {model}
+              {model}
             </span>
           </div>
         </div>
@@ -150,7 +144,7 @@ function Results({ data }: { data: AnalyzeResponse }) {
 
       {moments.length === 0 ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Claude no encontró momentos suficientemente fuertes en este video.
+          Gemini no encontró momentos suficientemente fuertes en este video.
         </p>
       ) : (
         <ol className="flex flex-col gap-4">
@@ -202,16 +196,9 @@ function MomentCard({
           {formatTime(moment.startSec)} → {formatTime(moment.endSec)}
         </a>
         <span>· {duration}s</span>
-        <SignalChips signals={moment.signals} />
       </div>
 
       <p className="text-sm text-zinc-700 dark:text-zinc-300">{moment.description}</p>
-
-      {moment.transcriptExcerpt && (
-        <blockquote className="border-l-2 border-zinc-300 pl-3 text-sm italic text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-          “{moment.transcriptExcerpt}”
-        </blockquote>
-      )}
 
       <p className="text-xs text-zinc-500 dark:text-zinc-500">
         <span className="font-semibold">Por qué:</span> {moment.reason}
@@ -232,44 +219,6 @@ function ScoreBadge({ score }: { score: number }) {
       className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${tone}`}
     >
       {score}/100
-    </span>
-  );
-}
-
-function SignalChips({ signals }: { signals: Signals }) {
-  const items: Array<[keyof Signals, string]> = [
-    ["heatmap", "heatmap"],
-    ["transcript", "transcript"],
-    ["metadata", "metadata"],
-  ];
-  return (
-    <span className="flex flex-wrap items-center gap-1">
-      {items.map(([key, label]) => (
-        <span
-          key={key}
-          className={`rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${
-            signals[key]
-              ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-              : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600"
-          }`}
-        >
-          {label}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function Badge({ active, children }: { active: boolean; children: React.ReactNode }) {
-  return (
-    <span
-      className={`rounded-full px-2 py-0.5 ${
-        active
-          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200"
-          : "bg-zinc-100 text-zinc-500 line-through dark:bg-zinc-800 dark:text-zinc-500"
-      }`}
-    >
-      {children}
     </span>
   );
 }
