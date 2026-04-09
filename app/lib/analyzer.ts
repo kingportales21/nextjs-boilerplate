@@ -45,12 +45,23 @@ INFORMACIÓN QUE TIENES
   - Audio: gritos de "MADRE MÍA", risas, sonido del motor, frenazos, música que sube de intensidad.
   - Verbal: frases icónicas, revelaciones, chistes, conclusiones contundentes.
 
+⚠️ REGLA INQUEBRANTABLE — CERO ALUCINACIONES
+Solo puedes describir cosas que REALMENTE ves u oyes en este video concreto. NO inventes nada. NO generes momentos "plausibles" a partir del título, del nombre del canal o de tu conocimiento general sobre Carwow. Todo lo que devuelvas debe salir literalmente del video que estás viendo.
+
+Para cada momento DEBES incluir evidencia específica que solo podrías conocer habiendo visto el video:
+- En el campo \`reason\`, incluye al MENOS UNA cita textual (verbatim) del audio o subtítulos entre comillas españolas «», con las palabras exactas que se dicen en ese momento.
+- En el campo \`description\`, menciona al menos UN detalle visual concreto y verificable (qué coche se ve, qué color, qué gesto hace JF Calero, qué aparece en pantalla, dónde están grabando).
+
+SI POR CUALQUIER MOTIVO NO PUEDES ACCEDER AL VIDEO (no te carga, está restringido geográficamente, es privado, falla la ingesta, lo que sea) — NO generes momentos imaginarios. En ese caso responde EXACTAMENTE con este JSON y nada más:
+
+{ "moments": [], "error": "no_video_access" }
+
 REGLAS PARA ELEGIR MOMENTOS
 1. Cada momento debe ser autocontenido: entendible sin haber visto el resto del video.
 2. Prioriza momentos con un pico claro de emoción (reacción de JF Calero, sorpresa, sonido espectacular del motor, resultado de drag race, frase pegadiza).
 3. Redondea los límites a segundos enteros. Duración MÁXIMA 80 segundos — bajo NINGÚN concepto devuelvas clips de más de 80 segundos. Pueden ser más cortos (15, 20, 40 segundos) si el momento se sostiene solo; prioriza calidad sobre duración, no rellenes para llegar a 80. Arranca unos segundos ANTES del remate para dar contexto al espectador.
 4. NO elijas intros, outros, menciones a patrocinadores, llamadas a suscribirse ni secciones promocionales.
-5. Devuelve EXACTAMENTE 4 momentos, ordenados por score (mayor primero). Ni más ni menos: elige los 4 mejores del video.
+5. Devuelve EXACTAMENTE 4 momentos, ordenados por score (mayor primero). Ni más ni menos: elige los 4 mejores del video. (Excepción: si no puedes acceder al video, devuelve el JSON de error de arriba.)
 6. Puntúa cada momento de 0 a 100 según tu confianza de que funcionará como Short standalone.
 7. Escribe \`title\`, \`description\` y \`reason\` en **español de España** (castellano), con el tono de Carwow España (cercano, directo, con gancho). Si mencionas al presentador, llámalo "JF Calero".
 
@@ -63,14 +74,16 @@ Responde ÚNICAMENTE con JSON válido, sin bloques de código markdown ni coment
       "startSec": number,           // segundo de inicio del clip
       "endSec": number,             // segundo de fin del clip
       "title": string,              // gancho estilo titular, máx 60 caracteres
-      "description": string,        // 1-2 frases describiendo qué pasa
+      "description": string,        // 1-2 frases describiendo qué pasa, CON detalle visual concreto
       "score": number,              // 0-100
-      "reason": string              // por qué es viral, citando lo que ves/oyes
+      "reason": string              // por qué es viral, INCLUYENDO al menos una cita verbatim entre «»
     }
   ]
 }`;
 
-const USER_PROMPT = `Analiza este video de Carwow España e identifica los mejores momentos para cortar como Shorts/TikToks/Reels verticales. Devuelve el JSON con los momentos siguiendo el formato indicado.`;
+const USER_PROMPT = `Analiza este video concreto de Carwow España que te paso y devuelve el JSON con los 4 mejores momentos para cortar como Shorts/TikToks/Reels.
+
+Recuerda: solo describe lo que REALMENTE ves y oyes en ESTE video. Cada \`reason\` debe contener una cita verbatim entre «» con las palabras exactas del audio, y cada \`description\` debe incluir un detalle visual concreto. Si no puedes acceder al video, devuelve { "moments": [], "error": "no_video_access" }.`;
 
 export type AnalyzeOptions = {
   /**
@@ -84,6 +97,9 @@ export type AnalyzeOptions = {
 /** Sentinel error that the route handler looks for to return a TIMEOUT code. */
 export const GEMINI_TIMEOUT_ERROR = "GEMINI_TIMEOUT";
 
+/** Sentinel error when Gemini reports it couldn't actually watch the video. */
+export const GEMINI_NO_VIDEO_ACCESS_ERROR = "GEMINI_NO_VIDEO_ACCESS";
+
 export async function analyzeViralMoments(
   metadata: VideoMetadata,
   options: AnalyzeOptions = {},
@@ -95,12 +111,15 @@ export async function analyzeViralMoments(
     );
   }
 
-  // Fast mode = flash (for long videos). Default = Pro (smarter, slower).
+  // Fast mode = flash (for long videos). Default = 2.5 Pro (smarter).
+  // We deliberately stick to the 2.5 family because it's the only one that
+  // officially supports YouTube URL ingestion via fileData.fileUri. Gemini
+  // 3.1 Pro preview was trying to cope with the YouTube URL but didn't
+  // actually ingest the video and was hallucinating plausible-sounding
+  // Carwow moments based purely on the prompt.
   // The Vercel env var GEMINI_MODEL is ignored on purpose: it used to be
   // pinned to gemini-2.5-flash and kept overriding the code.
-  const model = options.fast
-    ? "gemini-2.5-flash"
-    : "gemini-3.1-pro-preview";
+  const model = options.fast ? "gemini-2.5-flash" : "gemini-2.5-pro";
   const ai = new GoogleGenAI({ apiKey });
 
   const generatePromise = ai.models.generateContent({
@@ -121,7 +140,9 @@ export async function analyzeViralMoments(
     ],
     config: {
       systemInstruction: SYSTEM_PROMPT,
-      temperature: 0.4,
+      // Low temperature to keep the model grounded in what it actually
+      // sees/hears in the video and minimize creative hallucinations.
+      temperature: 0.2,
       responseMimeType: "application/json",
     },
   });
@@ -170,6 +191,13 @@ function parseMomentsJson(raw: string): ViralMoment[] {
     throw new Error(
       `Gemini returned non-JSON output: ${(err as Error).message}\n${raw.slice(0, 400)}`,
     );
+  }
+
+  // Anti-hallucination guardrail: if Gemini reports it couldn't watch the
+  // video, surface a specific error instead of silently returning nothing.
+  const errorField = (parsed as { error?: unknown })?.error;
+  if (typeof errorField === "string" && errorField === "no_video_access") {
+    throw new Error(GEMINI_NO_VIDEO_ACCESS_ERROR);
   }
 
   const list = (parsed as { moments?: unknown })?.moments;

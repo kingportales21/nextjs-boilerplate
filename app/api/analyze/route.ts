@@ -19,6 +19,7 @@ import { extractVideoId, fetchVideoMetadata } from "@/app/lib/youtube";
 import {
   analyzeViralMoments,
   GEMINI_TIMEOUT_ERROR,
+  GEMINI_NO_VIDEO_ACCESS_ERROR,
 } from "@/app/lib/analyzer";
 
 // Gemini video analysis can take a while on long videos. Force Node runtime
@@ -78,6 +79,17 @@ export async function POST(req: NextRequest) {
           code: "TIMEOUT",
         },
         { status: 504 },
+      );
+    }
+
+    if (message === GEMINI_NO_VIDEO_ACCESS_ERROR) {
+      return NextResponse.json(
+        {
+          error:
+            "Gemini no ha podido acceder al contenido del video (puede estar restringido geográficamente, ser privado o fallar la ingesta). Prueba con otro video público.",
+          code: "NO_VIDEO_ACCESS",
+        },
+        { status: 422 },
       );
     }
 
