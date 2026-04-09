@@ -69,21 +69,38 @@ FORMATO DE RESPUESTA
 Responde ÚNICAMENTE con JSON válido, sin bloques de código markdown ni comentarios, siguiendo este esquema:
 
 {
+  "videoDurationSec": number,     // duración TOTAL del video en segundos (lo más precisa posible)
+  "videoTopic": string,           // 1 frase describiendo de qué va el video (evidencia de que lo has visto)
   "moments": [
     {
-      "startSec": number,           // segundo de inicio del clip
-      "endSec": number,             // segundo de fin del clip
+      "startSec": number,           // segundo de inicio del clip (DEBE ser < videoDurationSec)
+      "endSec": number,             // segundo de fin del clip (DEBE ser <= videoDurationSec)
       "title": string,              // gancho estilo titular, máx 60 caracteres
       "description": string,        // 1-2 frases describiendo qué pasa, CON detalle visual concreto
       "score": number,              // 0-100
       "reason": string              // por qué es viral, INCLUYENDO al menos una cita verbatim entre «»
     }
   ]
-}`;
+}
 
-const USER_PROMPT = `Analiza este video concreto de Carwow España que te paso y devuelve el JSON con los 4 mejores momentos para cortar como Shorts/TikToks/Reels.
+Bajo NINGÚN concepto devuelvas un momento cuyo startSec o endSec sea mayor que la duración real del video. Si no sabes la duración exacta, sé conservador.`;
 
-Recuerda: solo describe lo que REALMENTE ves y oyes en ESTE video. Cada \`reason\` debe contener una cita verbatim entre «» con las palabras exactas del audio, y cada \`description\` debe incluir un detalle visual concreto. Si no puedes acceder al video, devuelve { "moments": [], "error": "no_video_access" }.`;
+function buildUserPrompt(metadata: VideoMetadata): string {
+  return `Analiza este video CONCRETO de YouTube que te estoy adjuntando:
+
+URL: ${metadata.videoUrl}
+${metadata.title ? `Título: ${metadata.title}` : ""}
+${metadata.author ? `Canal: ${metadata.author}` : ""}
+
+Devuelve el JSON con \`videoDurationSec\`, \`videoTopic\` y los 4 mejores momentos para cortar como Shorts/TikToks/Reels.
+
+⚠️ Recordatorio crítico:
+- Solo describe lo que REALMENTE ves y oyes en ESTE video adjunto. No inventes.
+- Cada \`reason\` debe contener una cita verbatim entre «» con palabras exactas del audio.
+- Cada \`description\` debe incluir un detalle visual concreto (coche, color, gesto, lugar, lo que aparece en pantalla).
+- NINGÚN timestamp puede ser mayor que \`videoDurationSec\`.
+- Si no puedes acceder al video adjunto, devuelve exactamente { "moments": [], "error": "no_video_access" }.`;
+}
 
 export type AnalyzeOptions = {
   /**
@@ -129,12 +146,16 @@ export async function analyzeViralMoments(
         role: "user",
         parts: [
           {
+            // No mimeType here on purpose: "video/*" is a wildcard, not a
+            // valid MIME type, and causes the Gemini API to silently reject
+            // the fileData (which was the root cause of hallucinations —
+            // Gemini never actually saw the video). Google's own docs for
+            // YouTube URL ingestion show no mimeType.
             fileData: {
               fileUri: metadata.videoUrl,
-              mimeType: "video/*",
             },
           },
-          { text: USER_PROMPT },
+          { text: buildUserPrompt(metadata) },
         ],
       },
     ],
@@ -167,6 +188,13 @@ export async function analyzeViralMoments(
     throw new Error("Gemini returned an empty response.");
   }
 
+  // Log a truncated version of the raw response so we can debug hallucinations
+  // and ingest failures from Vercel's function logs.
+  console.log(
+    "[analyzer] Gemini raw response (truncated):",
+    text.slice(0, 1500),
+  );
+
   return {
     moments: parseMomentsJson(text),
     model,
@@ -193,17 +221,42 @@ function parseMomentsJson(raw: string): ViralMoment[] {
     );
   }
 
+  const parsedObj = parsed as {
+    error?: unknown;
+    moments?: unknown;
+    videoDurationSec?: unknown;
+    videoTopic?: unknown;
+  };
+
   // Anti-hallucination guardrail: if Gemini reports it couldn't watch the
   // video, surface a specific error instead of silently returning nothing.
-  const errorField = (parsed as { error?: unknown })?.error;
-  if (typeof errorField === "string" && errorField === "no_video_access") {
+  if (
+    typeof parsedObj.error === "string" &&
+    parsedObj.error === "no_video_access"
+  ) {
     throw new Error(GEMINI_NO_VIDEO_ACCESS_ERROR);
   }
 
-  const list = (parsed as { moments?: unknown })?.moments;
+  const list = parsedObj.moments;
   if (!Array.isArray(list)) {
     throw new Error("Gemini response did not contain a 'moments' array.");
   }
+
+  // Gemini's declared video duration (if any). We use it to reject any
+  // moment with a timestamp beyond the real video length, which is a
+  // telltale sign of hallucination.
+  const rawDuration = Number(parsedObj.videoDurationSec);
+  const videoDurationSec =
+    Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : undefined;
+
+  console.log(
+    "[analyzer] videoDurationSec=%s videoTopic=%s momentCount=%d",
+    videoDurationSec,
+    typeof parsedObj.videoTopic === "string"
+      ? parsedObj.videoTopic.slice(0, 120)
+      : "(none)",
+    list.length,
+  );
 
   const result: ViralMoment[] = [];
   for (const item of list) {
@@ -214,9 +267,24 @@ function parseMomentsJson(raw: string): ViralMoment[] {
     if (Number.isNaN(startSec) || Number.isNaN(endSec) || endSec <= startSec) {
       continue;
     }
+    // Reject any moment whose start is beyond the declared video duration —
+    // that's hallucination by definition.
+    if (videoDurationSec !== undefined && startSec >= videoDurationSec) {
+      console.warn(
+        "[analyzer] dropping hallucinated moment (startSec %d >= duration %d): %s",
+        startSec,
+        videoDurationSec,
+        m.title,
+      );
+      continue;
+    }
     // Hard cap the clip length at 80 seconds regardless of what Gemini returns.
     const safeStart = Math.max(0, startSec);
-    const safeEnd = Math.min(endSec, safeStart + 80);
+    let safeEnd = Math.min(endSec, safeStart + 80);
+    // Clamp end to the declared video duration too.
+    if (videoDurationSec !== undefined) {
+      safeEnd = Math.min(safeEnd, videoDurationSec);
+    }
     result.push({
       startSec: safeStart,
       endSec: Math.max(safeStart + 1, safeEnd),
