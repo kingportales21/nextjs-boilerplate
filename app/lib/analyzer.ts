@@ -82,7 +82,10 @@ export async function analyzeViralMoments(
     );
   }
 
-  const model = process.env.GEMINI_MODEL ?? "gemini-3.1-pro-preview";
+  // Hardcoded on purpose: the Vercel env var GEMINI_MODEL used to point at
+  // gemini-2.5-flash. We want the newest Pro model regardless of what's set
+  // in Vercel, so we ignore the env var entirely.
+  const model = "gemini-3.1-pro-preview";
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
