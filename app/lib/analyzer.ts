@@ -50,7 +50,7 @@ REGLAS PARA ELEGIR MOMENTOS
 2. Prioriza momentos con un pico claro de emoción (reacción de JF Calero, sorpresa, sonido espectacular del motor, resultado de drag race, frase pegadiza).
 3. Redondea los límites a segundos enteros. Duración entre 20 y 60 segundos. Arranca unos segundos ANTES del remate para dar contexto al espectador.
 4. NO elijas intros, outros, menciones a patrocinadores, llamadas a suscribirse ni secciones promocionales.
-5. Devuelve entre 3 y 6 momentos, ordenados por score (mayor primero). Si el video realmente tiene menos momentos fuertes, devuelve menos.
+5. Devuelve EXACTAMENTE 4 momentos, ordenados por score (mayor primero). Ni más ni menos: elige los 4 mejores del video.
 6. Puntúa cada momento de 0 a 100 según tu confianza de que funcionará como Short standalone.
 7. Escribe \`title\`, \`description\` y \`reason\` en **español de España** (castellano), con el tono de Carwow España (cercano, directo, con gancho). Si mencionas al presentador, llámalo "JF Calero".
 
@@ -164,5 +164,5 @@ function parseMomentsJson(raw: string): ViralMoment[] {
   }
 
   result.sort((a, b) => b.score - a.score);
-  return result;
+  return result.slice(0, 4);
 }
