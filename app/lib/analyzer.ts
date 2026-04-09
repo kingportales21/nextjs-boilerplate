@@ -82,7 +82,7 @@ export async function analyzeViralMoments(
     );
   }
 
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL ?? "gemini-3.1-pro-preview";
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({

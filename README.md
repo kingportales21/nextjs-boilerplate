@@ -57,7 +57,7 @@ está pensado para sites que embeben videos.
    `kingportales21/nextjs-boilerplate`.
 2. En **Settings → Environment Variables**, añade:
    - `GEMINI_API_KEY` = tu clave (marca **Sensitive**)
-   - *(opcional)* `GEMINI_MODEL` = `gemini-2.5-flash` o `gemini-2.5-pro`
+   - *(opcional)* `GEMINI_MODEL` = por defecto `gemini-3.1-pro-preview`
 3. Pulsa **Deploy**.
 
 Vercel re-despliega automáticamente en cada push. El timeout de las funciones
@@ -70,7 +70,7 @@ cortarán).
 | Variable | Obligatoria | Descripción |
 |---|---|---|
 | `GEMINI_API_KEY` | sí | Clave de Google AI Studio. |
-| `GEMINI_MODEL` | no | Por defecto `gemini-2.5-flash`. Alternativa: `gemini-2.5-pro` (más lento y caro pero más preciso). |
+| `GEMINI_MODEL` | no | Por defecto `gemini-3.1-pro-preview` (el modelo más inteligente, prioriza calidad sobre velocidad). Alternativas más rápidas y baratas: `gemini-3-flash-preview`, `gemini-2.5-pro`, `gemini-2.5-flash`. |
 
 ## Estructura
 
@@ -85,7 +85,9 @@ app/
 ## Limitaciones
 
 - **Coste por video**: cada análisis consume tokens de video en Gemini.
-  Con `gemini-2.5-flash` ronda los $0.03–$0.10 por video según duración.
-  Con `gemini-2.5-pro` puede subir a $0.30–$1 por video.
-- **Tiempo de procesamiento**: 1–4 minutos según la duración del video.
+  Con `gemini-3.1-pro-preview` (default) puede costar $0.30–$1.50 por video
+  según duración. Si quieres abaratar, pasa a `gemini-3-flash-preview` o
+  `gemini-2.5-flash` (~$0.03–$0.10 por video) a costa de precisión.
+- **Tiempo de procesamiento**: 2–6 minutos con el modelo Pro según la
+  duración del video (el Pro prioriza calidad sobre velocidad).
 - **Videos privados o age-restricted**: Gemini no podrá ingerirlos.
