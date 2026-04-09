@@ -26,9 +26,46 @@ type AnalyzeResponse = {
   model: string;
 };
 
+type AttemptResult =
+  | { ok: true; data: AnalyzeResponse }
+  | { ok: false; status: number; code?: string; message: string };
+
+async function attemptAnalyze(
+  url: string,
+  fast: boolean,
+): Promise<AttemptResult> {
+  const res = await fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fast ? { url, fast: true } : { url }),
+  });
+
+  if (res.ok) {
+    return { ok: true, data: (await res.json()) as AnalyzeResponse };
+  }
+
+  let code: string | undefined;
+  let message: string | undefined;
+  try {
+    const data = await res.json();
+    code = typeof data?.code === "string" ? data.code : undefined;
+    message = typeof data?.error === "string" ? data.error : undefined;
+  } catch {
+    // Non-JSON error body (e.g. Vercel's raw 504 page) — ignore.
+  }
+
+  return {
+    ok: false,
+    status: res.status,
+    code,
+    message: message ?? `Error ${res.status}`,
+  };
+}
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
 
@@ -36,22 +73,33 @@ export default function Home() {
     event.preventDefault();
     setError(null);
     setResult(null);
+    setStatus(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error ?? `Error ${res.status}`);
+      // First attempt: smart Pro model.
+      let attempt = await attemptAnalyze(url, false);
+
+      // If the Pro attempt timed out (our own 504 or Vercel's raw 504),
+      // retry automatically with the fast flash model.
+      if (
+        !attempt.ok &&
+        (attempt.code === "TIMEOUT" || attempt.status === 504)
+      ) {
+        setStatus(
+          "El modelo avanzado tardó demasiado. Reintentando con el modelo rápido…",
+        );
+        attempt = await attemptAnalyze(url, true);
       }
-      setResult(data as AnalyzeResponse);
+
+      if (!attempt.ok) {
+        throw new Error(attempt.message);
+      }
+      setResult(attempt.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoading(false);
+      setStatus(null);
     }
   }
 
@@ -101,9 +149,8 @@ export default function Home() {
 
         {loading && !result && (
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-            Gemini está descargando el video y analizándolo entero (imagen +
-            audio). Puede tardar entre 1 y 4 minutos según la duración del
-            video…
+            {status ??
+              "Gemini está analizando el video con el modelo avanzado. Si tarda demasiado, reintentamos automáticamente con un modelo más rápido…"}
           </div>
         )}
 

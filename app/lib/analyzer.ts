@@ -72,8 +72,21 @@ Responde ÚNICAMENTE con JSON válido, sin bloques de código markdown ni coment
 
 const USER_PROMPT = `Analiza este video de Carwow España e identifica los mejores momentos para cortar como Shorts/TikToks/Reels verticales. Devuelve el JSON con los momentos siguiendo el formato indicado.`;
 
+export type AnalyzeOptions = {
+  /**
+   * When true, uses the fast (but less intelligent) flash model. Meant for
+   * long videos that would otherwise time out on Vercel's 60s Hobby cap.
+   * Default: false (uses the smart Pro model with a 45s internal timeout).
+   */
+  fast?: boolean;
+};
+
+/** Sentinel error that the route handler looks for to return a TIMEOUT code. */
+export const GEMINI_TIMEOUT_ERROR = "GEMINI_TIMEOUT";
+
 export async function analyzeViralMoments(
   metadata: VideoMetadata,
+  options: AnalyzeOptions = {},
 ): Promise<AnalysisResult> {
   const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
   if (!apiKey) {
@@ -82,13 +95,15 @@ export async function analyzeViralMoments(
     );
   }
 
-  // Hardcoded on purpose: the Vercel env var GEMINI_MODEL used to point at
-  // gemini-2.5-flash. We want the newest Pro model regardless of what's set
-  // in Vercel, so we ignore the env var entirely.
-  const model = "gemini-3.1-pro-preview";
+  // Fast mode = flash (for long videos). Default = Pro (smarter, slower).
+  // The Vercel env var GEMINI_MODEL is ignored on purpose: it used to be
+  // pinned to gemini-2.5-flash and kept overriding the code.
+  const model = options.fast
+    ? "gemini-2.5-flash"
+    : "gemini-3.1-pro-preview";
   const ai = new GoogleGenAI({ apiKey });
 
-  const response = await ai.models.generateContent({
+  const generatePromise = ai.models.generateContent({
     model,
     contents: [
       {
@@ -110,6 +125,21 @@ export async function analyzeViralMoments(
       responseMimeType: "application/json",
     },
   });
+
+  // When using Pro, bail out at 45s so we can return a structured TIMEOUT
+  // response before Vercel's 60s Hobby cap kills the function. The client
+  // auto-retries with fast=true. Flash has no timeout (it's fast enough).
+  const response = options.fast
+    ? await generatePromise
+    : await Promise.race<Awaited<typeof generatePromise>>([
+        generatePromise,
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error(GEMINI_TIMEOUT_ERROR)),
+            45_000,
+          ),
+        ),
+      ]);
 
   const text = response.text;
   if (!text) {
